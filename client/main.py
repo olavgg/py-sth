@@ -43,10 +43,11 @@ class PYSTHClient(object):
         for controller in os.listdir(os.getcwd()+"/controllers"):
             module_name, ext = os.path.splitext(controller)
             if module_name.endswith('_controller') and ext == '.py':
+                module = __import__("controllers.%s"%(module_name))
                 PYSTHClient.controllers.append(
-                   __import__("controllers.%s" % (module_name)))
+                   module.__getattribute__(module_name))
         for controller in PYSTHClient.controllers:
-            base.app.register_blueprint(controller.index_controller.PAGE)
+            base.app.register_blueprint(controller.PAGE)
 
                 
     @staticmethod
@@ -55,7 +56,6 @@ class PYSTHClient(object):
         Start the application
         '''
         base = Base()
-        base.app.config.from_object('conf.config.DevelopmentConfig')
         logging.basicConfig(
             filename=base.app.config["LOGFILE"],
             level=logging.DEBUG,

@@ -25,5 +25,26 @@ Created on Dec 8, 2012
 @Author: Olav Groenaas Gjerde
 '''
 
-if __name__ == '__main__':
-    pass
+import os
+import logging
+
+from conf.base import Base
+
+BASE = Base(config_type='ProductionConfig')
+APP = BASE.app
+#Imports all controllers and register pages
+CONTROLLERS = []
+for controller in os.listdir(os.getcwd()+"/controllers"):
+    module_name, ext = os.path.splitext(controller)
+    if module_name.endswith('_controller') and ext == '.py':
+        module = __import__("controllers.%s"%(module_name))
+        CONTROLLERS.append(module.__getattribute__(module_name))
+for controller in CONTROLLERS:
+    APP.register_blueprint(controller.PAGE)
+    
+logging.basicConfig(
+    filename=APP.config["LOGFILE"],
+    level=logging.ERROR,
+    format='%(asctime)s %(levelname)s: %(message)s '
+            '[in %(pathname)s:%(lineno)d]'
+)

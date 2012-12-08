@@ -26,6 +26,7 @@ Created on Dec 8, 2012
 from Crypto.Util.number import getRandomInteger
 from datetime import timedelta
 from flask import Flask
+from flask import jsonify
 
 class Base(object):
     '''
@@ -33,11 +34,44 @@ class Base(object):
     '''
     _base = None
 
-    def __init__(self):
-        self.app = Flask(__name__)
+    def __init__(self, config_type='DevelopmentConfig'):
+        app = Flask(__name__)
+        self.app = app
+        self.app.config.from_object('conf.config.%s'%(config_type))
         self.app.secret_key = getRandomInteger(128)
         self.app.permanent_session_lifetime = timedelta(seconds=10)
         Base._base = self
+        
+        @app.errorhandler(404)
+        def page_not_found(exception):
+            '''Page Not Found'''
+            data = dict(
+                status = exception.code, 
+                error = str(exception),
+                description = page_not_found.__doc__
+            )
+            return jsonify(data)
+        
+        if app.config['DEBUG'] == False:
+            @app.errorhandler(500)
+            def error(exception):
+                '''Internal Server Error'''
+                data = dict(
+                    status = exception.code, 
+                    error = str(exception),
+                    description = error.__doc__
+                )
+                return jsonify(data)
+        
+        @app.errorhandler(403)
+        def forbidden(exception):
+            '''Forbidden'''
+            data = dict(
+                status = exception.code, 
+                error = str(exception),
+                description = forbidden.__doc__
+            )
+            return jsonify(data)
         
     @staticmethod
     def get_instance():
