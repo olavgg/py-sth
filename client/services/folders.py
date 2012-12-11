@@ -19,35 +19,46 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Created on Dec 8, 2012
+Created on Dec 11, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
+from conf.base import Base
 
-from flask import Blueprint
-from flask import jsonify
+from services.shell_command import ShellCommand
 
-from conf.security import with_http_auth
+class Folders(object):
+    ''' Load folders '''
 
-PAGE = Blueprint('index_page', __name__)
-
-@PAGE.route("/", methods=['GET', 'POST'])
-def index():
-    '''
-    Render application index page
-    '''
-    data = dict(
-        title = "Python Storage Tank Helper",
-        online = True
-    )
-    return jsonify(data)
-
-@PAGE.route("/testauth", methods=['GET', 'POST'])
-@with_http_auth
-def test_auth():
-    '''
-    test if authentication is working
-    '''
-    data = dict(authed = True)
-    return jsonify(data)
-
+    def __init__(self, user):
+        '''Constructor'''
+        from domain.user import User
+        if isinstance(user, User) and isinstance(user.uid, str):
+            base = Base.get_instance()
+            self._path = "{path}/{uid}".format(
+                path=base.app.config['USER_HOME_PATH'],
+                uid=user.uid
+            )
+        else:
+            raise TypeError('argument must be of type User')
+    
+    @property
+    def path(self):
+        ''' Get path '''
+        return self._path
+    
+    @path.setter
+    def path(self, value):
+        ''' Set path '''
+        self._path = value
+    
+    def find_all(self):
+        ''' Find all folders for user '''
+        cmd = 'time ls -Ra {path} | grep -e "./.*:" | sed "s/://"'.format(
+            path = self.path
+        )
+        lines, length = ShellCommand(cmd).run()
+        folders = []
+        for line in lines:
+            folders.append(line)
+        return dict(folders=folders)

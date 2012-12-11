@@ -23,8 +23,6 @@ Created on Dec 8, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
-from datetime import timedelta
-
 class Config(object):
     '''
     Default config for application
@@ -34,12 +32,12 @@ class Config(object):
     HOST = "0.0.0.0"
     PORT = 18080
     LOGFILE = 'debug.log'
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=1)
+    AUTH_TOKEN = 'test123456'
+    USER_HOME_PATH = '/home'
     SSH = "/usr/bin/ssh"
     GREP = "/usr/bin/grep"
     ZFS = "/sbin/zfs"
     ZPOOL = "/sbin/zpool"
-    APPPW = "test123456"
     
     @staticmethod
     def set_app_password(password):

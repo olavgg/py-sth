@@ -19,35 +19,36 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Created on Dec 8, 2012
+Created on Dec 11, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
 
-from flask import Blueprint
-from flask import jsonify
+class User(object):
+    '''User object'''
+    users = {}
 
-from conf.security import with_http_auth
+    def __init__(self, uid):
+        '''Constructor'''
+        self._uid = uid
+        User.users[uid] = self
 
-PAGE = Blueprint('index_page', __name__)
-
-@PAGE.route("/", methods=['GET', 'POST'])
-def index():
-    '''
-    Render application index page
-    '''
-    data = dict(
-        title = "Python Storage Tank Helper",
-        online = True
-    )
-    return jsonify(data)
-
-@PAGE.route("/testauth", methods=['GET', 'POST'])
-@with_http_auth
-def test_auth():
-    '''
-    test if authentication is working
-    '''
-    data = dict(authed = True)
-    return jsonify(data)
-
+    def __str__(self):
+        return self._uid
+    
+    @staticmethod
+    def get(uid):
+        ''' Find user by uid, return None if not found '''
+        if uid in User.users:
+            return  User.users[uid]
+        return None
+        
+    @property
+    def uid(self):
+        ''' Get uid '''
+        return self._uid
+    
+    @uid.setter
+    def uid(self, value):
+        ''' Set uid '''
+        self._uid = value

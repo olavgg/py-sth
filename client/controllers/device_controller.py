@@ -19,35 +19,30 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Created on Dec 8, 2012
+Created on Dec 11, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
-
 from flask import Blueprint
 from flask import jsonify
+from flask import redirect
+from flask import url_for
 
 from conf.security import with_http_auth
+from services.folders import Folders
+from domain.user import User
 
-PAGE = Blueprint('index_page', __name__)
+PAGE = Blueprint('device_page', __name__)
 
-@PAGE.route("/", methods=['GET', 'POST'])
-def index():
-    '''
-    Render application index page
-    '''
-    data = dict(
-        title = "Python Storage Tank Helper",
-        online = True
-    )
-    return jsonify(data)
-
-@PAGE.route("/testauth", methods=['GET', 'POST'])
+@PAGE.route("/device", methods=['GET', 'POST'])
 @with_http_auth
-def test_auth():
-    '''
-    test if authentication is working
-    '''
-    data = dict(authed = True)
-    return jsonify(data)
+def index():
+    '''default view'''
+    return redirect(url_for('.listall'))
 
+@PAGE.route("/device/list", methods=['GET', 'POST'])
+@with_http_auth
+def listall():
+    '''list all devices'''
+    data = Folders(User('olav')).find_all()
+    return jsonify(data)
