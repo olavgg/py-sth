@@ -23,10 +23,12 @@ Created on Dec 8, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
+
 class Config(object):
     '''
     Default config for application
     '''
+
     DEBUG = False
     TESTING = False
     HOST = "0.0.0.0"
@@ -53,6 +55,7 @@ class ProductionConfig(Config):
     '''
     Production config
     '''
+
     LOGFILE = 'production.log'
     
     @staticmethod
@@ -86,6 +89,7 @@ class TestingConfig(Config):
     '''
     Test config
     '''
+
     TESTING = True
     LOGFILE = 'test.log'
     

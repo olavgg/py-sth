@@ -27,13 +27,14 @@ from Crypto.Util.number import getRandomInteger
 from datetime import timedelta
 from flask import Flask
 from flask import jsonify
+from conf.boostrap import Bootstrap
 
 class Base(object):
     '''
     Base application functionality
     '''
     _base = None
-
+    
     def __init__(self, config_type='DevelopmentConfig'):
         app = Flask(__name__)
         self.app = app
@@ -41,6 +42,7 @@ class Base(object):
         self.app.secret_key = getRandomInteger(128)
         self.app.permanent_session_lifetime = timedelta(seconds=10)
         Base._base = self
+        Bootstrap(self)
         
         @app.errorhandler(404)
         def page_not_found(exception):
@@ -89,4 +91,14 @@ class Base(object):
         '''
         Base._base = Base()
         return Base._base
+    
+    @staticmethod
+    def get_config():
+        '''
+        Get current static configuration instance, 
+        create a new if it doesn't exist.
+        '''
+        if Base._base == None:
+            Base._base = Base()
+        return Base._base.app.config
     

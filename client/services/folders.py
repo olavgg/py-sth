@@ -23,9 +23,10 @@ Created on Dec 11, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
-from conf.base import Base
-
+import os
 from services.shell_command import ShellCommand
+
+from conf.base import Base
 
 class Folders(object):
     ''' Load folders '''
@@ -35,7 +36,7 @@ class Folders(object):
         from domain.user import User
         if isinstance(user, User) and isinstance(user.uid, str):
             base = Base.get_instance()
-            self._path = "{path}/{uid}".format(
+            self._path = "{path}/{uid}/.wine".format(
                 path=base.app.config['USER_HOME_PATH'],
                 uid=user.uid
             )
@@ -54,11 +55,15 @@ class Folders(object):
     
     def find_all(self):
         ''' Find all folders for user '''
-        cmd = 'time ls -Ra {path} | grep -e "./.*:" | sed "s/://"'.format(
+        cmd = 'ls -Ra {path} | grep -e "./.*:" | sed "s/://"'.format(
             path = self.path
         )
-        lines, length = ShellCommand(cmd).run()
+        results = ShellCommand(cmd).run()
         folders = []
-        for line in lines:
-            folders.append(line)
+        for line in results[0]:
+            splitted_path = line.split('/')
+            folder = splitted_path[len(splitted_path)-1]
+            parent_folder = splitted_path[len(splitted_path)-2]
+            data = {'name':folder,'parent':parent_folder,'path':line}
+            folders.append(data)
         return dict(folders=folders)

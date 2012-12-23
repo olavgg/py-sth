@@ -19,31 +19,41 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Created on Dec 11, 2012
+Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
-
-from flask import Blueprint
-from flask import jsonify
-from flask import redirect
-from flask import url_for
-
-from conf.security import with_http_auth
-from services.folders import Folders
 from domain.user import User
 
-PAGE = Blueprint('device_page', __name__)
-
-@PAGE.route("/device", methods=['GET', 'POST'])
-@with_http_auth
-def index():
-    '''default view'''
-    return redirect(url_for('.listall'))
-
-@PAGE.route("/device/list", methods=['GET', 'POST'])
-@with_http_auth
-def listall():
-    '''list all devices'''
-    data = Folders(User.get('olav')).find_all()
-    return jsonify(data)
+class Bootstrap(object):
+    '''
+    Bootstrap class, use this file to configure and setup data 
+    that's needed for each environment.
+    '''
+    
+    def __init__(self, base):
+        '''
+        Constructor, based on the environment settings,
+        run the method for data initialization.
+        '''
+        if base.app.config['DEBUG'] == True:
+            Bootstrap.init_dev_data()
+        elif base.app.config['TESTING'] == True:
+            Bootstrap.init_test_data()
+        
+    @staticmethod
+    def init_dev_data():
+        ''' Init dev data '''
+        User('olav')
+        User('olavgg')
+        
+    @staticmethod
+    def init_test_data():
+        ''' Init test data '''
+        User('olav')
+        User('olavgg')
+        
+    @staticmethod
+    def init_prod_data():
+        ''' Init prod data '''
+        pass

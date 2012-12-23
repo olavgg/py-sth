@@ -19,31 +19,47 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Created on Dec 11, 2012
+Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
+from domain.folder import Folder
 
-from flask import Blueprint
-from flask import jsonify
-from flask import redirect
-from flask import url_for
+class File(object):
+    ''' File class '''
 
-from conf.security import with_http_auth
-from services.folders import Folders
-from domain.user import User
-
-PAGE = Blueprint('device_page', __name__)
-
-@PAGE.route("/device", methods=['GET', 'POST'])
-@with_http_auth
-def index():
-    '''default view'''
-    return redirect(url_for('.listall'))
-
-@PAGE.route("/device/list", methods=['GET', 'POST'])
-@with_http_auth
-def listall():
-    '''list all devices'''
-    data = Folders(User.get('olav')).find_all()
-    return jsonify(data)
+    def __init__(self, name, folder):
+        ''' Constructor '''
+        if isinstance(folder, Folder):
+            self._folder = folder
+        else:
+            self._folder = None
+        self._name = name
+        
+    @staticmethod
+    def get_instance(name, folder):
+        return File(name, folder)
+    
+    @property
+    def name(self):
+        ''' Get name '''
+        return self._name
+    
+    @name.setter
+    def name(self, value):
+        ''' Set name '''
+        self._name = value
+    
+    @property
+    def folder(self):
+        ''' Get folder '''
+        return self._folder
+    
+    @folder.setter
+    def folder(self, value):
+        ''' Set folder that the file belongs to '''
+        if isinstance(value, Folder):
+            self._folder = value
+        else:
+            raise TypeError('argument must be of type File or List')
+        
