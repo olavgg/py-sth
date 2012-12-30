@@ -33,72 +33,72 @@ class Base(object):
     '''
     Base application functionality
     '''
-    _base = None
+    __base = None
     
-    def __init__(self, config_type='DevelopmentConfig'):
-        app = Flask(__name__)
-        self.app = app
-        self.app.config.from_object('conf.config.%s'%(config_type))
-        self.app.secret_key = getRandomInteger(128)
-        self.app.permanent_session_lifetime = timedelta(seconds=10)
-        Base._base = self
-        Bootstrap(self)
-        
-        @app.errorhandler(404)
-        def page_not_found(exception):
-            '''Page Not Found'''
-            data = dict(
-                status = exception.code, 
-                error = str(exception),
-                description = page_not_found.__doc__
-            )
-            return jsonify(data)
-        
-        if app.config['DEBUG'] == False:
-            @app.errorhandler(500)
-            def error(exception):
-                '''Internal Server Error'''
-                data = dict(
-                    status = exception.code, 
-                    error = str(exception),
-                    description = error.__doc__
-                )
-                return jsonify(data)
-        
-        @app.errorhandler(403)
-        def forbidden(exception):
-            '''Forbidden'''
-            data = dict(
-                status = exception.code, 
-                error = str(exception),
-                description = forbidden.__doc__
-            )
-            return jsonify(data)
-        
+    def __init__(self):
+        self.app = None
+            
     @staticmethod
-    def get_instance():
+    def get_instance(config_type='DevelopmentConfig'):
         '''
         Get current static Base instance, create a new if it doesn't exist
         '''
-        if Base._base == None:
-            Base._base = Base()
-        return Base._base
+        if Base.__base == None:
+            app = Flask(__name__)
+            base = Base()
+            base.app = app
+            base.app.config.from_object('conf.config.%s'%(config_type))
+            base.app.secret_key = getRandomInteger(128)
+            base.app.permanent_session_lifetime = timedelta(seconds=10)
+            Base.__base = base
+            Bootstrap(base)
+            
+            @app.errorhandler(404)
+            def page_not_found(exception):
+                '''Page Not Found'''
+                data = dict(
+                    status = exception.code, 
+                    error = str(exception),
+                    description = page_not_found.__doc__
+                )
+                return jsonify(data)
+            
+            if app.config['DEBUG'] == False:
+                @app.errorhandler(500)
+                def error(exception):
+                    '''Internal Server Error'''
+                    data = dict(
+                        status = exception.code, 
+                        error = str(exception),
+                        description = error.__doc__
+                    )
+                    return jsonify(data)
+            
+            @app.errorhandler(403)
+            def forbidden(exception):
+                '''Forbidden'''
+                data = dict(
+                    status = exception.code, 
+                    error = str(exception),
+                    description = forbidden.__doc__
+                )
+                return jsonify(data)
+        return Base.__base
     
     @staticmethod
     def get_new_instance():
-        '''
-        Get a new Base instance
-        '''
-        Base._base = Base()
-        return Base._base
+        '''Create a new Base instance '''
+        return Base().get_instance()
     
-    @staticmethod
-    def get_config():
-        '''
-        Get current static configuration instance, 
-        create a new if it doesn't exist.
-        '''
-        if Base._base == None:
-            Base._base = Base()
-        return Base._base.app.config
+    def get_config(self):
+        ''' Get current configuration instance '''
+        if self.__base == None:
+            return None
+        return self.__base.app.config
+        
+    def get_logger(self):
+        ''' Get current logger instance '''
+        if self.__base == None:
+            return None
+        return self.__base.app.logger
     

@@ -55,7 +55,7 @@ class PYSTHClient(object):
         '''
         Start the application
         '''
-        base = Base()
+        base = Base.get_instance()
         logging.basicConfig(
             filename=base.app.config["LOGFILE"],
             level=logging.DEBUG,
