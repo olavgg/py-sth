@@ -29,6 +29,8 @@ from flask import jsonify
 
 from conf.security import with_http_auth
 
+from domain.user import User
+
 PAGE = Blueprint('index_page', __name__)
 
 @PAGE.route("/", methods=['GET', 'POST'])
@@ -50,4 +52,10 @@ def test_auth():
     '''
     data = dict(authed = True)
     return jsonify(data)
+
+@PAGE.route("/users", methods=['GET', 'POST'])
+@with_http_auth
+def users():
+    ''' return all users that are registered '''
+    return jsonify(User.get_users_as_dict())
 

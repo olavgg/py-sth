@@ -53,6 +53,16 @@ class Base(object):
             Base.__base = base
             Bootstrap(base)
             
+            @app.errorhandler(400)
+            def bad_request(exception):
+                '''Bad Request'''
+                data = dict(
+                    status = exception.code, 
+                    error = str(exception),
+                    description = bad_request.__doc__
+                )
+                return jsonify(data), 400
+            
             @app.errorhandler(404)
             def page_not_found(exception):
                 '''Page Not Found'''
@@ -61,7 +71,7 @@ class Base(object):
                     error = str(exception),
                     description = page_not_found.__doc__
                 )
-                return jsonify(data)
+                return jsonify(data), 404
             
             if app.config['DEBUG'] == False:
                 @app.errorhandler(500)
@@ -72,7 +82,7 @@ class Base(object):
                         error = str(exception),
                         description = error.__doc__
                     )
-                    return jsonify(data)
+                    return jsonify(data), 500
             
             @app.errorhandler(403)
             def forbidden(exception):
@@ -82,7 +92,7 @@ class Base(object):
                     error = str(exception),
                     description = forbidden.__doc__
                 )
-                return jsonify(data)
+                return jsonify(data), 403
         return Base.__base
     
     @staticmethod

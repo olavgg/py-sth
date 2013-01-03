@@ -37,6 +37,11 @@ class User(object):
         return self._uid
     
     @staticmethod
+    def get_users_as_dict():
+        ''' Return all users as dictionary'''
+        return dict(users= [(value.uid) for value in User.users.values()] )
+    
+    @staticmethod
     def get(uid):
         ''' Find user by uid, return None if not found '''
         if uid in User.users:

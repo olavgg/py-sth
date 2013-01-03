@@ -26,7 +26,12 @@ Created on Dec 11, 2012
 '''
 from functools import wraps
 from flask import request
+from flask import abort
+
 from conf.base import Base
+import re
+
+NSC = r'[^a-zA-Z0-9]' #NO_SPECIAL_CHAR
 
 def with_http_auth(func):
     '''Decorator'''
@@ -53,3 +58,17 @@ def with_http_auth(func):
         else:
             return "no access"
     return validate_token
+
+def disallow_special_characters(func):
+    '''Decorator'''
+    @wraps(func)
+    def disallow_special_characters_f(*args, **kwargs):
+        '''
+        If any special characters are found in the incoming parameters
+        return a 400 Bad Request
+        '''
+        if [val for val in request.values.values() if re.match(NSC, val)]:
+            abort(400)
+        else:
+            return func(*args, **kwargs)
+    return disallow_special_characters_f

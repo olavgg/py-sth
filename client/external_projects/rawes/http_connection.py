@@ -32,12 +32,13 @@ class HttpConnection(object):
         self.protocol = 'http'
         self.host = host
         self.port = port
-        self.session = requests.session(timeout=timeout)
+        self.session = requests.session()
+        self.timeout = timeout
         self.url = '%s://%s:%s' % (self.protocol, self.host, self.port)
 
     def request(self, method, path, **kwargs):
         response = self.session.request(
-            method, '%s/%s' % (self.url, path), **kwargs)
+            method, '%s/%s' % (self.url, path), timeout=self.timeout, **kwargs)
         return self._decode(response)
 
     def _decode(self, response):

@@ -6,11 +6,12 @@ Created on Jan 2, 2013
 
 from flask import Blueprint
 from flask import jsonify
-from flask import redirect
-from flask import url_for
+from flask import abort
 
 from conf.security import with_http_auth
+from conf.security import disallow_special_characters
 from services.folders import Folders
+from services.es_service import EsService
 from domain.user import User
 
 PAGE = Blueprint('es_page', __name__)
@@ -19,7 +20,8 @@ PAGE = Blueprint('es_page', __name__)
 @with_http_auth
 def index():
     ''' Show status '''
-    return redirect(url_for('.listall'))
+    es = EsService()
+    return jsonify(es.get_status())
 
 @PAGE.route("/es/<uid>", methods=['GET', 'POST'])
 @with_http_auth
@@ -29,12 +31,16 @@ def listall(uid):
     data = Folders(user).find_all()
     return jsonify(data)
 
-@PAGE.route("/es/create/<user>/", methods=['GET', 'POST'])
+@PAGE.route("/es/create/<uid>/", methods=['GET', 'POST'])
+@disallow_special_characters
 @with_http_auth
-def create(user):
+def create(uid):
     ''' Create new index for the specified user '''
-    data = {}
-    return jsonify(data)
+    user = User.get(uid)
+    if user:
+        es = EsService()
+        return jsonify( es.create_index(user.uid, overwrite=True) )
+    abort(404)
 
 @PAGE.route("/es/update/<idx_id>/<user>/", methods=['GET','POST'])
 @with_http_auth

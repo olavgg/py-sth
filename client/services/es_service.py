@@ -49,6 +49,9 @@ class EsService(object):
         except ConnectionError as err:
             LOG.exception(str(err))
             
+    def get_status(self):
+        return self.conn.get('')
+            
     def create_index(self, name, overwrite=False):
         ''' 
         Create index for user, overwrite if a second argument with value true 
@@ -116,6 +119,7 @@ class EsService(object):
         })
         if result['status'] != 200:
             LOG.error("Couldn't create index")
+        return result
             
     def index_folders(self):
         pass
