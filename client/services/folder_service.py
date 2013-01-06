@@ -24,11 +24,12 @@ Created on Dec 11, 2012
 @Author: Olav Groenaas Gjerde
 '''
 import os
+import datetime
 from services.shell_command import ShellCommand
 
 from conf.base import Base
 
-class Folders(object):
+class FolderService(object):
     ''' Load folders '''
 
     def __init__(self, user):
@@ -36,7 +37,7 @@ class Folders(object):
         from domain.user import User
         if isinstance(user, User) and isinstance(user.uid, str):
             base = Base.get_instance()
-            self._path = "{path}/{uid}/.wine".format(
+            self._path = "{path}/{uid}".format(
                 path=base.app.config['USER_HOME_PATH'],
                 uid=user.uid
             )
@@ -64,6 +65,19 @@ class Folders(object):
             splitted_path = line.split('/')
             folder = splitted_path[len(splitted_path)-1]
             parent_folder = splitted_path[len(splitted_path)-2]
-            data = {'name':folder,'parent':parent_folder,'path':line}
+            date_modified = datetime.datetime.fromtimestamp(
+                os.path.getmtime(line)).strftime('%Y-%m-%d %H:%M')
+            data = {'name':folder,'parent':parent_folder,
+                'path':line,'date_modified':date_modified}
             folders.append(data)
         return dict(folders=folders)
+        
+    @staticmethod
+    def sizeof_fmt(num):
+        for x in [' bytes','KB','MB','GB']:
+            if num < 1024.0 and num > -1024.0:
+                if x == ' bytes':
+                    return "%3i%s" % (num, x)
+                return "%3.1f%s" % (num, x)
+            num /= 1024.0
+        return "%3.1f%s" % (num, 'TB')
