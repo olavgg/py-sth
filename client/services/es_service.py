@@ -179,7 +179,6 @@ class EsService(object):
                     'folder':folder_index_id,
                     'date_modified':file_obj['date_modified']
                 }
-                self.bulk_insert(file_path, file_bulk)
                 file_bulk.append(fdata)
             if len(file_bulk) > 0:
                 self.bulk_insert(file_path,file_bulk)
