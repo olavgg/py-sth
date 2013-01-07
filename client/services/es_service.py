@@ -26,8 +26,11 @@ Created on Dec 30, 2012
 
 from external_projects import rawes
 from requests import ConnectionError
+import json
+import urllib
 
 from conf import LOG
+from services.folder_service import FolderService
 
 class EsService(object):
     ''' Handles connecting to a ElasticSearch cluster and data manipulation '''
@@ -67,10 +70,10 @@ class EsService(object):
         result = self.conn.put(name, data={
             "settings": {
                 "index": {
+                    "refresh_interval" : "60s",
                     "number_of_shards": 2,
                     "number_of_replicas": 1,
                     "store": {
-                        #"type": "memory",
                         "type": "niofs",
                         "compress": {"stored": 'true',"tv": 'true'}
                     },
@@ -86,10 +89,12 @@ class EsService(object):
                         'name': {
                             'type': 'string', 'index': 'analyzed'
                         },
-                        'parent': {
-                            'type': 'string', 'index': 'not_analyzed'
+                        'date_modified': {
+                            'type': 'date', 
+                            'format':'yyyy-MM-dd HH:mm', 
+                            'index': 'not_analyzed'
                         },
-                        'path': {
+                        'parent': {
                             'type': 'string', 'index': 'not_analyzed'
                         }
                     }
@@ -100,9 +105,6 @@ class EsService(object):
                             'type': 'string', 'index': 'analyzed'
                         },
                         'folder': {
-                            'type': 'string', 'index': 'not_analyzed'
-                        },
-                        'path': {
                             'type': 'string', 'index': 'not_analyzed'
                         },
                         'date_modified': {
@@ -120,9 +122,96 @@ class EsService(object):
         if result['status'] != 200:
             LOG.error("Couldn't create index")
         return result
+    
+    def bulk_insert(self, path, data, bulk_size=8000):
+        ''' 
+        Bulk insert data to elasticsearch, default size of bulk_size is 8000
+        '''
+        counter = 0
+        dbuf = []
+        for item in data:
+            if counter == bulk_size:
+                self.__do_bulk_insert(path, dbuf)
+                counter = 0
+                dbuf = []
+            dbuf.append(item)
+            counter += 1
+        self.__do_bulk_insert(path, dbuf)
             
-    def index_folders(self):
-        pass
+    def __do_bulk_insert(self, path, databulk):
+        ''' Private function that does the actual bulk insert to ES '''
+        bdata = '\n'.join([json.dumps(bdat) for bdat in databulk])+'\n'
+        result = self.conn.post(path, data=bdata)
+        if result['status'] != 200:
+            LOG.error(str(result))
+            LOG.error(bdata)
+            LOG.error("Couldn't do bulk insert")
+            
+    def index_folders_and_files(self, user):
+        '''
+        Uses the FolderService to find all folders for the user. Path to
+        the folder is urlencoded and assigned as a id for the Folder type
+        in the ElasticSearch index.
+        '''
+        folder_path = '{idx_name}/folder/_bulk'.format(idx_name=user.uid)
+        file_path = '{idx_name}/file/_bulk'.format(idx_name=user.uid)
+        items_indexed = 0
+        fservice = FolderService(user)
+        folders = fservice.find_all()
+        folder_bulk = []
+        for folder in folders:
+            index_id = urllib.quote_plus(folder['path'])
+            folder_bulk.append({'index' : {'_id':index_id}})
+            data = {
+                'name':folder['name'],
+                'parent':folder['parent'],
+                'date_modified':folder['date_modified']
+            }
+            folder_bulk.append(data)
+            folder_files = fservice.find_folder_files(folder)
+            file_bulk = []
+            for file_obj in folder_files:
+                file_index_id = urllib.quote_plus(file_obj['path'])
+                folder_index_id = urllib.quote_plus(file_obj['folder'])
+                file_bulk.append({'index' : {'_id':file_index_id}})
+                fdata = {
+                    'name':file_obj['name'],
+                    'folder':folder_index_id,
+                    'date_modified':file_obj['date_modified']
+                }
+                self.bulk_insert(file_path, file_bulk)
+                file_bulk.append(fdata)
+            if len(file_bulk) > 0:
+                self.bulk_insert(file_path,file_bulk)
+                items_indexed += len(file_bulk)
+        self.bulk_insert(folder_path,folder_bulk)
+        items_indexed += len(folders)
+        return items_indexed
         
-    def index_files(self):
-        pass
+    
+    def build_index(self, user):
+        ''' 
+        Build a new index, steps involved are:
+        Create/Overwrite index
+        Add folders to index
+        Add files to index
+        Flush index when done
+        '''
+        LOG.debug(u'Start building index for {uid}'.format(uid=user.uid))
+        result = self.create_index(user.uid, overwrite=True)
+        if result['status'] != 200:
+            LOG.error(str(result))
+            LOG.error(u'An error occured while creating the index')
+            return False
+        items_indexed = self.index_folders_and_files(user)
+        result = self.conn.post('{idx_name}/_flush'.format(idx_name=user.uid))
+        if result['status'] != 200:
+            LOG.error(str(result))
+            LOG.error(u'An error occured when executing an index flush')
+            return False
+        msg = u'Indexed {total} items for user {uid}.'.format(
+            total=items_indexed,
+            uid=user.uid
+        )
+        LOG.debug(msg)
+        return dict(items_indexed=items_indexed)

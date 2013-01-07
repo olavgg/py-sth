@@ -7,6 +7,8 @@ Created on Jan 2, 2013
 from flask import Blueprint
 from flask import jsonify
 from flask import abort
+from multiprocessing import Pool
+from multiprocessing import Queue
 
 from conf.security import with_http_auth
 from conf.security import disallow_special_characters
@@ -31,20 +33,40 @@ def listall(uid):
     data = FolderService(user).find_all()
     return jsonify(data)
 
+@PAGE.route("/es/build/<uid>/", methods=['GET', 'POST'])
+@disallow_special_characters
+@with_http_auth
+def build(uid):
+    '''
+    Build new index for the specified user, build folders first and then
+    later fill it with files. This function is heavy, so it executes
+    asynchronously.
+    '''
+    user = User.get(uid)
+    if user:
+        queue = Queue(1)
+        pool = Pool(processes=1)
+        result = pool.apply_async(build_process, [user], callback=None)
+        if result:
+            #data = dict(status='ok',items_indexed=result['items_indexed'])
+            data = dict(status='ok')
+            return jsonify(data)
+        else:
+            abort(500)
+    abort(404)
+
+def build_process(user):
+    eserver = EsService()
+    return eserver.build_index(user)
+
 @PAGE.route("/es/create/<uid>/", methods=['GET', 'POST'])
 @disallow_special_characters
 @with_http_auth
 def create(uid):
-    ''' Create new index for the specified user and fill it with content'''
+    ''' Create new index for the specified user'''
     user = User.get(uid)
     if user:
-        eserver = EsService()
-        results = eserver.create_index(user.uid, overwrite=True)
-        if results['status'] != 200:
-            abort(404)
-        folder_service = FolderService(user)
-        folders = folder_service.find_all()
-        return jsonify(dict(status='ok'))
+        return jsonify(EsService().create_index(user.uid, overwrite=True))
     abort(404)
 
 @PAGE.route("/es/update/<idx_id>/<user>/", methods=['GET','POST'])

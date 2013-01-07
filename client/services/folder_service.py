@@ -28,17 +28,21 @@ import datetime
 from services.shell_command import ShellCommand
 
 from conf.base import Base
+from conf import LOG
+
+DATEFORMAT = '%Y-%m-%d %H:%M'
 
 class FolderService(object):
     ''' Load folders '''
-
+    
     def __init__(self, user):
         '''Constructor'''
         from domain.user import User
         if isinstance(user, User) and isinstance(user.uid, str):
             base = Base.get_instance()
-            self._path = "{path}/{uid}".format(
-                path=base.app.config['USER_HOME_PATH'],
+            self.__syspath = base.app.config['USER_HOME_PATH']
+            self.__path = "{path}/{uid}".format(
+                path=self.__syspath,
                 uid=user.uid
             )
         else:
@@ -47,30 +51,61 @@ class FolderService(object):
     @property
     def path(self):
         ''' Get path '''
-        return self._path
+        return self.__path
     
     @path.setter
     def path(self, value):
         ''' Set path '''
-        self._path = value
+        self.__path = value
+        
+    @property
+    def syspath(self):
+        ''' Get full system path '''
+        return self.__syspath
+    
+    @syspath.setter
+    def syspath(self, value):
+        ''' Set full system path '''
+        self.__syspath = value
     
     def find_all(self):
         ''' Find all folders for user '''
-        cmd = 'ls -Ra {path} | grep -e "./.*:" | sed "s/://"'.format(
+        cmd = 'ls -Ra {path}/web_weather | grep -e "./.*:"| sed "s/://;s/\/home//"'.format(
             path = self.path
         )
+        LOG.debug(cmd)
         results = ShellCommand(cmd).run()
         folders = []
         for line in results[0]:
             splitted_path = line.split('/')
             folder = splitted_path[len(splitted_path)-1]
-            parent_folder = splitted_path[len(splitted_path)-2]
+            parent_folder = line[:-len(folder)]
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(line)).strftime('%Y-%m-%d %H:%M')
+                os.path.getmtime(self.syspath+line)).strftime(DATEFORMAT)
             data = {'name':folder,'parent':parent_folder,
                 'path':line,'date_modified':date_modified}
             folders.append(data)
-        return dict(folders=folders)
+        return folders
+    
+    def find_folder_files(self, folder):
+        ''' Find all files for given folder '''
+        cmd = 'find {path} -maxdepth 1 -type f | sed "s#.*/##"'.format(
+            path = self.syspath + folder['path']
+        )
+        results = ShellCommand(cmd).run()
+        files = []
+        for line in results[0]:
+            path = '{folder}/{file}'.format(folder=folder['path'],file=line)
+            fullpath = self.syspath+path
+            size = FolderService.sizeof_fmt(os.path.getsize(fullpath))
+            date_modified = datetime.datetime.fromtimestamp(
+                os.path.getmtime(fullpath)).strftime(DATEFORMAT)
+            data = {
+                'name':line,'folder':folder['path'],'path':path,
+                'size':size, 'date_modified':date_modified
+            }
+            files.append(data)
+        return files
         
     @staticmethod
     def sizeof_fmt(num):

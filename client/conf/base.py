@@ -73,7 +73,7 @@ class Base(object):
                 )
                 return jsonify(data), 404
             
-            if app.config['DEBUG'] == False:
+            if app.config['DEBUG'] == True:
                 @app.errorhandler(500)
                 def error(exception):
                     '''Internal Server Error'''
