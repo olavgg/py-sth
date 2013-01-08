@@ -51,7 +51,7 @@ class TaskService(object):
         self.values = values
         TaskService.tasks[self.name] = self
         TaskService.work_queue.put(self.name)
-        if len(active_children()) < 2:
+        if len([1 for v in active_children() if isinstance(v,Worker)]) < 1:
             worker = Worker(TaskService.work_queue)
             worker.start()
         
