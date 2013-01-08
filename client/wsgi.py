@@ -30,7 +30,8 @@ import logging
 
 from conf.base import Base
 
-BASE = Base(config_type='ProductionConfig')
+BASE = Base.get_instance()
+#BASE = Base.get_instance(config_type='ProductionConfig')
 APP = BASE.app
 #Imports all controllers and register pages
 CONTROLLERS = []
