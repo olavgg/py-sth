@@ -46,12 +46,14 @@ class Bootstrap(object):
         ''' Init dev data '''
         User('olav')
         User('olavgg')
+        User('testolav')
         
     @staticmethod
     def init_test_data():
         ''' Init test data '''
         User('olav')
         User('olavgg')
+        User('testolav')
         
     @staticmethod
     def init_prod_data():

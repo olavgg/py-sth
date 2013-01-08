@@ -70,7 +70,7 @@ class FolderService(object):
     
     def find_all(self):
         ''' Find all folders for user '''
-        cmd = 'ls -Ra {path}/web_weather | grep -e "./.*:"| sed "s/://;s/\/home//"'.format(
+        cmd = 'ls -Ra {path}/hg-projects | grep -e "./.*:"| sed "s/://;s/\/home//"'.format(
             path = self.path
         )
         LOG.debug(cmd)
@@ -89,7 +89,7 @@ class FolderService(object):
     
     def find_folder_files(self, folder):
         ''' Find all files for given folder '''
-        cmd = 'find {path} -maxdepth 1 -type f | sed "s#.*/##"'.format(
+        cmd = 'find "{path}" -maxdepth 1 -type f | sed "s#.*/##"'.format(
             path = self.syspath + folder['path']
         )
         results = ShellCommand(cmd).run()

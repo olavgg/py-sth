@@ -26,6 +26,7 @@ Created on Jan 8, 2013
 from multiprocessing import Process
 from multiprocessing import JoinableQueue
 from multiprocessing import Manager
+from multiprocessing import active_children
 from Queue import Empty
 
 from conf import LOG
@@ -36,32 +37,31 @@ class TaskService(object):
     A Queue implementation should be added.
     '''
     tasks = None
-    work_queue = JoinableQueue()
+    work_queue = None
 
     def __init__(self, func, **values):
         ''' Constructor '''
         if TaskService.tasks == None:
             TaskService.tasks = Manager().dict()
+            TaskService.work_queue = JoinableQueue()
         self.name = '{f},{u}'.format(f=func.__name__, u=values['user'].uid)
         if TaskService.find_task_by_name(self.name):
             raise ValueError('Task {n} already exists'.format(n=self.name))
         self.func = func
         self.values = values
         TaskService.tasks[self.name] = self
-        if TaskService.work_queue.empty():
-            TaskService.work_queue.put(self.name)
+        TaskService.work_queue.put(self.name)
+        if len(active_children()) < 2:
             worker = Worker(TaskService.work_queue)
             worker.start()
         
     def __str__(self):
         ''' Return the task name '''
         return self.name
-    
-    def __del__(self):
-        LOG.debug('Deleting task: {t}'.format(t=self.name))
         
     def remove(self):
         ''' Delete the Task '''
+        LOG.debug('Deleting task: {t}'.format(t=self.name))
         del(TaskService.tasks[self.name])
         del(self)
         
