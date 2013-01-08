@@ -214,3 +214,11 @@ class EsService(object):
         )
         LOG.debug(msg)
         return dict(items_indexed=items_indexed)
+    
+def build_process(values):
+    user = values.get('user')
+    if user:
+        eserver = EsService()
+        eserver.build_index(user)
+        return 1
+    return 0

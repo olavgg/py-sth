@@ -1,19 +1,40 @@
 '''
+Copyright (C) <2012> <Olav Groenaas Gjerde>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 Created on Jan 2, 2013
 
-@author: olav
+@Author: Olav Groenaas Gjerde
 '''
 
 from flask import Blueprint
 from flask import jsonify
 from flask import abort
-from multiprocessing import Pool
-from multiprocessing import Queue
 
+from conf import LOG
 from conf.security import with_http_auth
 from conf.security import disallow_special_characters
 from services.folder_service import FolderService
 from services.es_service import EsService
+from services.task_service import TaskService as TS
+from services.es_service import build_process
 from domain.user import User
 
 PAGE = Blueprint('es_page', __name__)
@@ -44,20 +65,14 @@ def build(uid):
     '''
     user = User.get(uid)
     if user:
-        queue = Queue(1)
-        pool = Pool(processes=1)
-        result = pool.apply_async(build_process, [user], callback=None)
-        if result:
-            #data = dict(status='ok',items_indexed=result['items_indexed'])
-            data = dict(status='ok')
-            return jsonify(data)
-        else:
-            abort(500)
+        try:
+            TS(build_process, user=user)
+        except ValueError, error:
+            LOG.error(error)
+            return jsonify(dict(error='job is already running'))
+        data = dict(status='ok')
+        return jsonify(data)
     abort(404)
-
-def build_process(user):
-    eserver = EsService()
-    return eserver.build_index(user)
 
 @PAGE.route("/es/create/<uid>/", methods=['GET', 'POST'])
 @disallow_special_characters
