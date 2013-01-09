@@ -29,12 +29,12 @@ from multiprocessing import Manager
 from multiprocessing import active_children
 from Queue import Empty
 
-from conf import LOG
+from domain.user import User
 
 class TaskService(object):
     ''' 
-    Asynchronous tasks class for storing tasks so only one type can be run.
-    A Queue implementation should be added.
+    Asynchronous tasks class for storing tasks into a queue so only one
+    process can be run concurrently.
     '''
     tasks = None
     work_queue = None
@@ -44,6 +44,10 @@ class TaskService(object):
         if TaskService.tasks == None:
             TaskService.tasks = Manager().dict()
             TaskService.work_queue = JoinableQueue()
+        if 'user' not in values:
+            values['user'] = User('admin', mock=True)
+        if 'wait' not in values:
+            values['wait'] = False
         self.name = '{f},{u}'.format(f=func.__name__, u=values['user'].uid)
         if TaskService.find_task_by_name(self.name):
             raise ValueError('Task {n} already exists'.format(n=self.name))
@@ -52,7 +56,7 @@ class TaskService(object):
         TaskService.tasks[self.name] = self
         TaskService.work_queue.put(self.name)
         if len([1 for v in active_children() if isinstance(v,Worker)]) < 1:
-            worker = Worker(TaskService.work_queue)
+            worker = Worker(TaskService.work_queue, wait=values['wait'])
             worker.start()
         
     def __str__(self):
@@ -61,7 +65,7 @@ class TaskService(object):
         
     def remove(self):
         ''' Delete the Task '''
-        LOG.debug('Deleting task: {t}'.format(t=self.name))
+        #LOG.debug('Deleting task: {t}'.format(t=self.name))
         del(TaskService.tasks[self.name])
         del(self)
         
@@ -76,22 +80,26 @@ class TaskService(object):
 class Worker(Process):
     ''' Worker class '''
     
-    def __init__(self, work_queue):
+    def __init__(self, work_queue, wait=False):
         ''' Constructor '''
         Process.__init__(self)
         self.w_queue = work_queue
         self.kill_received = False
+        self.wait = wait
 
     def run(self):
         ''' Executes a worker '''
         while not self.kill_received:
             try:
-                name = self.w_queue.get()
+                name = self.w_queue.get(self.wait)
                 task = TaskService.find_task_by_name(name)
-                LOG.debug("Starting " + str(task) + " ...")
+                #LOG.debug("Starting " + str(task) + " ...")
                 task.func(task.values)
                 task.remove()
-            except Empty:
-                break
-            finally:
                 self.w_queue.task_done()
+            except Empty:
+                #LOG.debug('Work queue is empty.')
+                break
+            except Exception:
+                #LOG.error('Unknown exception in work function.')
+                break

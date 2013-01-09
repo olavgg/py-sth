@@ -25,8 +25,9 @@ Created on Jan 9, 2013
 '''
 from domain.user import User
 
-class FolderService(object):
-    ''' Handles folder specific tasks for user '''
+class FileService(object):
+    ''' Handles file specific tasks for a user '''
+
     def __init__(self, user):
         ''' Constructor '''
         if isinstance(user, User) and isinstance(user.uid, str):
@@ -36,30 +37,30 @@ class FolderService(object):
     def user(self):
         ''' Get user '''
         return self.__user
-            
-    def create_folder(self):
+    
+    def create_file(self):
         pass
     
-    def rename_folder(self):
+    def rename_file(self):
         pass
     
-    def delete_folder(self):
+    def delete_file(self):
         pass
     
-    def copy_folder(self):
+    def copy_file(self):
         pass
     
-    def move_folder(self):
+    def move_file(self):
         pass
     
-    def zip_folder(self):
+    def zip_file(self):
         pass
         
-    def gzip_folder(self):
+    def gzip_file(self):
         pass
         
-    def lz4_folder(self):
+    def lz4_file(self):
         pass
         
-    def xz_folder(self):
+    def xz_file(self):
         pass

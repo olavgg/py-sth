@@ -31,10 +31,10 @@ from flask import abort
 from conf import LOG
 from conf.security import with_http_auth
 from conf.security import disallow_special_characters
-from services.folder_service import FolderService
+from services.user_data_service import UserDataService
 from services.es_service import EsService
 from services.task_service import TaskService as TS
-from services.es_service import build_process
+from services.user_data_service import build_process
 from domain.user import User
 
 PAGE = Blueprint('es_page', __name__)
@@ -51,7 +51,7 @@ def index():
 def listall(uid):
     ''' List data from the specified user '''
     user = User.get(uid)
-    data = FolderService(user).find_all()
+    data = UserDataService(user).find_all()
     return jsonify(data)
 
 @PAGE.route("/es/build/<uid>/", methods=['GET', 'POST'])
@@ -73,6 +73,17 @@ def build(uid):
         data = dict(status='ok')
         return jsonify(data)
     abort(404)
+    
+@PAGE.route("/es/build/all/", methods=['GET', 'POST'])
+@with_http_auth
+def build_all():
+    ''' Build new index for all users '''
+    total = UserDataService.index_all_users()
+    
+    data = dict(status='ok',
+                jobs=total,
+                description='{total} jobs created'.format(total=total))
+    return jsonify(data)
 
 @PAGE.route("/es/create/<uid>/", methods=['GET', 'POST'])
 @disallow_special_characters

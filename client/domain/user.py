@@ -28,18 +28,24 @@ class User(object):
     '''User object'''
     users = {}
 
-    def __init__(self, uid):
+    def __init__(self, uid, mock=False):
         '''Constructor'''
         self._uid = uid
-        User.users[uid] = self
+        if mock == False:
+            User.users[uid] = self
 
     def __str__(self):
         return self._uid
     
     @staticmethod
     def get_users_as_dict():
-        ''' Return all users as dictionary'''
-        return dict(users= [(value.uid) for value in User.users.values()] )
+        ''' Return all users as dictionary '''
+        return dict(users=User.get_users())
+    
+    @staticmethod
+    def get_users():
+        ''' Return all users as list '''
+        return User.users.values()
     
     @staticmethod
     def get(uid):

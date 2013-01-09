@@ -26,6 +26,7 @@ Created on Dec 8, 2012
 
 from flask import Blueprint
 from flask import jsonify
+from flask import current_app
 
 from conf.security import with_http_auth
 
@@ -38,6 +39,7 @@ def index():
     '''
     Render application index page
     '''
+    print current_app.config['USER_HOME_PATH']
     data = dict(
         title = "Python Storage Tank Helper",
         online = True

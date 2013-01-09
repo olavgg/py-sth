@@ -28,6 +28,7 @@ import logging
 import os
 
 from conf.base import Base
+from conf.boostrap import Bootstrap
         
 class PYSTHClient(object):
     '''
@@ -48,7 +49,6 @@ class PYSTHClient(object):
                    module.__getattribute__(module_name))
         for controller in PYSTHClient.controllers:
             base.app.register_blueprint(controller.PAGE)
-
                 
     @staticmethod
     def start():
@@ -63,7 +63,11 @@ class PYSTHClient(object):
                     '[in %(pathname)s:%(lineno)d]'
         )
         PYSTHClient.init_controllers(base)
+        @base.app.before_first_request
+        def bootstrap():
+            Bootstrap()
+        Base.do_first_request()
         base.app.run(base.app.config["HOST"], base.app.config["PORT"])
-        
+    
 if __name__ == '__main__':
     PYSTHClient.start()

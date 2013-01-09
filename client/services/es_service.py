@@ -27,13 +27,13 @@ Created on Dec 30, 2012
 from external_projects import rawes
 from requests import ConnectionError
 import json
-import urllib
 
 from conf import LOG
-from services.folder_service import FolderService
 
 class EsService(object):
     ''' Handles connecting to a ElasticSearch cluster and data manipulation '''
+    
+    current_connection = None
 
     def __init__(self):
         ''' 
@@ -51,74 +51,27 @@ class EsService(object):
                     raise ConnectionError("Couldn't connect to %s"%(es_server))
         except ConnectionError as err:
             LOG.exception(str(err))
+        EsService.current_connection = self
+        
+    @staticmethod
+    def get_instance():
+        if EsService.current_connection == None:
+            return EsService()
+        return EsService.current_connection
             
     def get_status(self):
         return self.conn.get('')
             
-    def create_index(self, name, overwrite=False):
+    def create_index(self, name, data=dict(), overwrite=False):
         ''' 
-        Create index for user, overwrite if a second argument with value true 
-        is added. Compress ratio is about 2.0 for this kind of data.
-        
-        One replica and two shards should be good enough for this use case.
-        That's why it's hard coded for now.
+        Create index , overwrite if a third argument/overwrite with value true
+        is passed. 
         '''
         if overwrite:
             idx_exists = self.conn.head(name)
             if idx_exists:
                 self.conn.delete(name)
-        result = self.conn.put(name, data={
-            "settings": {
-                "index": {
-                    "refresh_interval" : "60s",
-                    "number_of_shards": 2,
-                    "number_of_replicas": 1,
-                    "store": {
-                        "type": "niofs",
-                        "compress": {"stored": 'true',"tv": 'true'}
-                    },
-                    "gateway": { "type" : "none" }
-                    #"cache.field.type" : "soft"
-                },
-            },
-            "mappings": {
-                'folder': {
-                    "_source": { "compress": "true" },
-                    "_all" : {"enabled" : False},
-                    'properties': {
-                        'name': {
-                            'type': 'string', 'index': 'analyzed'
-                        },
-                        'date_modified': {
-                            'type': 'date', 
-                            'format':'yyyy-MM-dd HH:mm', 
-                            'index': 'not_analyzed'
-                        },
-                        'parent': {
-                            'type': 'string', 'index': 'not_analyzed'
-                        }
-                    }
-                },
-                'file': {
-                    'properties': {
-                        'name': {
-                            'type': 'string', 'index': 'analyzed'
-                        },
-                        'folder': {
-                            'type': 'string', 'index': 'not_analyzed'
-                        },
-                        'date_modified': {
-                            'type': 'date', 
-                            'format':'yyyy-MM-dd HH:mm', 
-                            'index': 'not_analyzed'
-                        },
-                        'size': {
-                            'type': 'string', 'index': 'not_analyzed'
-                        }
-                    }
-                }
-            }
-        })
+        result = self.conn.put(name, data=data)
         if result['status'] != 200:
             LOG.error("Couldn't create index")
         return result
@@ -147,78 +100,3 @@ class EsService(object):
             LOG.error(bdata)
             LOG.error("Couldn't do bulk insert")
             
-    def index_folders_and_files(self, user):
-        '''
-        Uses the FolderService to find all folders for the user. Path to
-        the folder is urlencoded and assigned as a id for the Folder type
-        in the ElasticSearch index.
-        '''
-        folder_path = '{idx_name}/folder/_bulk'.format(idx_name=user.uid)
-        file_path = '{idx_name}/file/_bulk'.format(idx_name=user.uid)
-        items_indexed = 0
-        fservice = FolderService(user)
-        folders = fservice.find_all()
-        folder_bulk = []
-        for folder in folders:
-            index_id = urllib.quote_plus(folder['path'])
-            folder_bulk.append({'index' : {'_id':index_id}})
-            data = {
-                'name':folder['name'],
-                'parent':folder['parent'],
-                'date_modified':folder['date_modified']
-            }
-            folder_bulk.append(data)
-            folder_files = fservice.find_folder_files(folder)
-            file_bulk = []
-            for file_obj in folder_files:
-                file_index_id = urllib.quote_plus(file_obj['path'])
-                folder_index_id = urllib.quote_plus(file_obj['folder'])
-                file_bulk.append({'index' : {'_id':file_index_id}})
-                fdata = {
-                    'name':file_obj['name'],
-                    'folder':folder_index_id,
-                    'date_modified':file_obj['date_modified']
-                }
-                file_bulk.append(fdata)
-            if len(file_bulk) > 0:
-                self.bulk_insert(file_path,file_bulk)
-                items_indexed += len(file_bulk)
-        self.bulk_insert(folder_path,folder_bulk)
-        items_indexed += len(folders)
-        return items_indexed
-        
-    
-    def build_index(self, user):
-        ''' 
-        Build a new index, steps involved are:
-        Create/Overwrite index
-        Add folders to index
-        Add files to index
-        Flush index when done
-        '''
-        LOG.debug(u'Start building index for {uid}'.format(uid=user.uid))
-        result = self.create_index(user.uid, overwrite=True)
-        if result['status'] != 200:
-            LOG.error(str(result))
-            LOG.error(u'An error occured while creating the index')
-            return False
-        items_indexed = self.index_folders_and_files(user)
-        result = self.conn.post('{idx_name}/_flush'.format(idx_name=user.uid))
-        if result['status'] != 200:
-            LOG.error(str(result))
-            LOG.error(u'An error occured when executing an index flush')
-            return False
-        msg = u'Indexed {total} items for user {uid}.'.format(
-            total=items_indexed,
-            uid=user.uid
-        )
-        LOG.debug(msg)
-        return dict(items_indexed=items_indexed)
-    
-def build_process(values):
-    user = values.get('user')
-    if user:
-        eserver = EsService()
-        eserver.build_index(user)
-        return 1
-    return 0

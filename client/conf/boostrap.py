@@ -23,7 +23,10 @@ Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
+from conf import LOG
+from conf import CONFIG
 from domain.user import User
+from services.user_data_service import UserDataService
 
 class Bootstrap(object):
     '''
@@ -31,27 +34,28 @@ class Bootstrap(object):
     that's needed for each environment.
     '''
     
-    def __init__(self, base):
+    def __init__(self):
         '''
         Constructor, based on the environment settings,
         run the method for data initialization.
         '''
-        if base.app.config['DEBUG'] == True:
+        LOG.info('Bootstrap starting...')
+        if CONFIG['DEBUG'] == True:
             Bootstrap.init_dev_data()
-        elif base.app.config['TESTING'] == True:
+        elif CONFIG['TESTING'] == True:
             Bootstrap.init_test_data()
+        LOG.info('Bootstrap complete...')
         
     @staticmethod
     def init_dev_data():
         ''' Init dev data '''
-        User('olav')
-        User('olavgg')
         User('testolav')
+        User('olavgg')
+        UserDataService.index_all_users()
         
     @staticmethod
     def init_test_data():
         ''' Init test data '''
-        User('olav')
         User('olavgg')
         User('testolav')
         

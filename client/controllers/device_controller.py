@@ -30,7 +30,7 @@ from flask import redirect
 from flask import url_for
 
 from conf.security import with_http_auth
-from services.folder_service import FolderService
+from services.user_data_service import UserDataService
 from domain.user import User
 
 PAGE = Blueprint('device_page', __name__)
@@ -45,5 +45,5 @@ def index():
 @with_http_auth
 def listall():
     '''list all devices'''
-    data = FolderService(User.get('olav')).find_all()
+    data = UserDataService(User.get('olav')).find_all()
     return jsonify(data)

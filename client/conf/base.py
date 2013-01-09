@@ -27,7 +27,7 @@ from Crypto.Util.number import getRandomInteger
 from datetime import timedelta
 from flask import Flask
 from flask import jsonify
-from conf.boostrap import Bootstrap
+from services.task_service import TaskService
 
 class Base(object):
     '''
@@ -51,7 +51,6 @@ class Base(object):
             base.app.secret_key = getRandomInteger(128)
             base.app.permanent_session_lifetime = timedelta(seconds=10)
             Base.__base = base
-            Bootstrap(base)
             
             @app.errorhandler(400)
             def bad_request(exception):
@@ -112,3 +111,27 @@ class Base(object):
             return None
         return self.__base.app.logger
     
+    @staticmethod
+    def do_first_request():
+        '''
+        Flask will run the initialization procedure two times, so this function
+        is a workaround the Flask framework limitation of initializing data at
+        the application startup with the reloader enabled.
+        '''
+        try:
+            TaskService(first_request_process, wait=True, sleep=3)
+        except ValueError, err:
+            Base.get_instance().get_logger().error(err)
+
+def first_request_process(values):
+    ''' First request Process to initialize data '''
+    import urllib
+    import time
+    while True:
+        time.sleep(values['sleep'])
+        try:
+            res = urllib.urlopen('http://localhost:18080')
+            if res.getcode() == 200:
+                break
+        except IOError, err:
+            Base.get_instance().get_logger().error(err)

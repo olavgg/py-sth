@@ -24,7 +24,7 @@ Created on Dec 11, 2012
 @Author: Olav Groenaas Gjerde
 '''
 from subprocess import Popen, PIPE
-from conf.base import Base
+from conf import LOG
 
 class ShellCommand(object):
     ''' 
@@ -54,11 +54,10 @@ class ShellCommand(object):
         error = data[1]
         output.wait()
         if output.returncode != 0:
-            base = Base.get_instance()
             errormsg = (
                 u"Couldn't execute command: %s"%(self.cmd))
-            base.app.logger.exception(errormsg)
-            base.app.logger.exception(error)
+            LOG.exception(errormsg)
+            LOG.exception(error)
             lines = False
         if lines != False:
             length = len(lines)
