@@ -49,6 +49,16 @@ class File(object):
     def name(self, value):
         ''' Set name '''
         self._name = value
+        
+    @property
+    def path(self):
+        ''' Get path '''
+        return self.__path
+    
+    @path.setter
+    def path(self, value):
+        ''' Set path '''
+        self.__path = value
     
     @property
     def folder(self):
@@ -62,4 +72,6 @@ class File(object):
             self._folder = value
         else:
             raise TypeError('argument must be of type File or List')
+        
+    
         

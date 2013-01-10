@@ -28,37 +28,86 @@ from domain.file import File
 class Folder(object):
     ''' Folder class '''
 
-    def __init__(self, name):
+    def __init__(self, values):
         ''' Constructor '''
-        self._files = []
-        self._name = name
+        self.__files = []
+        self.__folders = []
+        self.__name = values['name']
+        self.__index_id = None
+        self.index_id(values['name'])
+        self.__path = values['path']
+        
         
     @staticmethod
-    def get_instance(name):
-        return Folder(name)
+    def get_instance(index_id, device_type):
+        ''' Loads a file from type, DISK or ELASTICSEARCH '''
+        values = {}
+        if device_type == 'DISK':
+            pass
+        elif device_type == 'ELASTICSEARCH':
+            pass
+        else:
+            raise TypeError('device_type must be of type Folder or List')
+        return Folder(values)
+    
+    @property
+    def index_id(self):
+        ''' Get id '''
+        return self.__index_id
+    
+    @index_id.setter
+    def index_id(self, value):
+        ''' Set name '''
+        self.__index_id = value
+        
+    @property
+    def path(self):
+        ''' Get path '''
+        return self.__path
+    
+    @path.setter
+    def path(self, value):
+        ''' Set path '''
+        self.__path = value
     
     @property
     def name(self):
         ''' Get name '''
-        return self._name
+        return self.__name
     
     @name.setter
     def name(self, value):
         ''' Set name '''
-        self._name = value
+        self.__name = value
     
     @property
     def files(self):
         ''' Get files '''
-        return self._files
+        return self.__files
     
     @files.setter
     def files(self, value):
         ''' Set files, new list if value is list or append a new File '''
         if isinstance(value, list):
-            self._files = value
+            self.__files = value
         elif isinstance(value, File):
-            self._files.append(value)
+            self.__files.append(value)
         else:
             raise TypeError('argument must be of type File or List')
+        
+    @property
+    def folders(self):
+        ''' Get folders '''
+        return self.__folders
+    
+    @folders.setter
+    def folders(self, value):
+        ''' Set files, new list if value is list or append a new File '''
+        if isinstance(value, list):
+            self.__folders = value
+        elif isinstance(value, Folder):
+            self.__folders.append(value)
+        else:
+            raise TypeError('argument must be of type Folder or List')
+    
         

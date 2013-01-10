@@ -28,6 +28,8 @@ import datetime
 import urllib
 
 from domain.user import User
+from domain.file import File
+from domain.folder import Folder
 from services.shell_command import ShellCommand
 from services.es_service import EsService
 from services.task_service import TaskService
@@ -149,10 +151,11 @@ class UserDataService(object):
         folder_bulk = []
         for folder in folders:
             index_id = urllib.quote_plus(folder['path'])
+            parent = urllib.quote_plus(folder['parent'])
             folder_bulk.append({'index' : {'_id':index_id}})
             data = {
                 'name':folder['name'],
-                'parent':folder['parent'],
+                'parent':parent,
                 'date_modified':folder['date_modified']
             }
             folder_bulk.append(data)
@@ -282,13 +285,15 @@ class UserDataService(object):
     
     def do_folder_sync(self, folder):
         '''
-        Pass a folder, read it from disk and the ES index. Compare and return
-        the correct results.
+        Pass a folder, read it from disk and the ES index. Compare its folders
+        and files and return the correct results based what is stored on disk.
         '''
-        pass
+        if isinstance(folder, Folder):
+            index_id = urllib.quote_plus(folder)
     
     @staticmethod
     def index_all_users():
+        ''' Static method for indexing all folders and files for all users '''
         users = User.get_users()
         for user in users:
             try:
@@ -299,6 +304,7 @@ class UserDataService(object):
         
     @staticmethod
     def sizeof_fmt(num):
+        ''' Byte representation'''
         for x in [' bytes','KB','MB','GB']:
             if num < 1024.0 and num > -1024.0:
                 if x == ' bytes':
@@ -308,6 +314,7 @@ class UserDataService(object):
         return "%3.1f%s" % (num, 'TB')
 
 def build_process(values):
+    ''' Task/process function '''
     user = values.get('user')
     if user:
         service = UserDataService(user)
