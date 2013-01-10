@@ -43,8 +43,8 @@ PAGE = Blueprint('es_page', __name__)
 @with_http_auth
 def index():
     ''' Show status '''
-    es = EsService()
-    return jsonify(es.get_status())
+    es_service = EsService()
+    return jsonify(es_service.get_status())
 
 @PAGE.route("/es/<uid>", methods=['GET', 'POST'])
 @with_http_auth
