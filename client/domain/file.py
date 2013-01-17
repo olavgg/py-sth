@@ -23,13 +23,13 @@ Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
-from domain.folder import Folder
 
 class File(object):
     ''' File class '''
 
     def __init__(self, name, folder):
         ''' Constructor '''
+        from domain.folder import Folder
         if isinstance(folder, Folder):
             self._folder = folder
         else:

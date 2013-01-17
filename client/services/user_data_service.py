@@ -25,7 +25,7 @@ Created on Dec 11, 2012
 '''
 import os
 import datetime
-import urllib
+from urllib import quote_plus as uenc
 
 from domain.user import User
 from domain.file import File
@@ -53,10 +53,8 @@ class UserDataService(object):
             )
             self.__user = user
             self.__es_service = EsService.get_instance()
-            self.__es_folder_path = (
-                '{idx_name}/folder/_bulk'.format(idx_name=user.uid))
-            self.__es_file_path = (
-                '{idx_name}/file/_bulk'.format(idx_name=user.uid))
+            self.__es_node_path = (
+                '{idx_name}/node/_bulk'.format(idx_name=user.uid))
         else:
             raise TypeError('argument must be of type User')
     
@@ -66,14 +64,9 @@ class UserDataService(object):
         return self.__es_service
     
     @property
-    def es_folder_path(self):
-        ''' Get ElasticSearch folder url '''
-        return self.__es_folder_path
-    
-    @property
-    def es_file_path(self):
-        ''' Get ElasticSearch file url '''
-        return self.__es_file_path
+    def es_node_path(self):
+        ''' Get ElasticSearch node url '''
+        return self.__es_node_path
     
     @property
     def user(self):
@@ -100,7 +93,7 @@ class UserDataService(object):
         ''' Set full system path '''
         self.__syspath = value
     
-    def find_all(self):
+    def find_all_folders(self):
         ''' Find all folders for user '''
         cmd = ('ls -Ra {path} '
                '| grep -e "./.*:" | sed "s/://;s/\/home//"').format(
@@ -147,20 +140,22 @@ class UserDataService(object):
         in the ElasticSearch index.
         '''
         items_indexed = 0
-        folders = self.find_all()
+        folders = self.find_all_folders()
         folder_bulk = []
         for folder in folders:
-            index_id = urllib.quote_plus(folder['path'])
-            parent = urllib.quote_plus(folder['parent'])
+            index_id = uenc(folder['path'])
+            parent = uenc(folder['parent'])
             folder_bulk.append({'index' : {'_id':index_id}})
             data = {
                 'name':folder['name'],
                 'parent':parent,
-                'date_modified':folder['date_modified']
+                'date_modified':folder['date_modified'],
+                'type':'folder',
+                'size':''
             }
             folder_bulk.append(data)
             items_indexed += self.index_files(folder)
-        self.es_service.bulk_insert(self.es_folder_path,folder_bulk)
+        self.es_service.bulk_insert(self.es_node_path,folder_bulk)
         items_indexed += len(folders)
         return items_indexed
     
@@ -169,17 +164,19 @@ class UserDataService(object):
         folder_files = self.find_folder_files(folder)
         file_bulk = []
         for file_obj in folder_files:
-            file_index_id = urllib.quote_plus(file_obj['path'])
-            folder_index_id = urllib.quote_plus(file_obj['folder'])
+            file_index_id = uenc(file_obj['path'])
+            folder_index_id = uenc(file_obj['folder'])
             file_bulk.append({'index' : {'_id':file_index_id}})
             fdata = {
                 'name':file_obj['name'],
-                'folder':folder_index_id,
-                'date_modified':file_obj['date_modified']
+                'parent':folder_index_id,
+                'date_modified':file_obj['date_modified'],
+                'size':file_obj['size'],
+                'type':'file'
             }
             file_bulk.append(fdata)
         if len(file_bulk) > 0:
-            self.es_service.bulk_insert(self.es_file_path,file_bulk)
+            self.es_service.bulk_insert(self.es_node_path,file_bulk)
         return len(file_bulk)
         
     def build_index(self):
@@ -233,7 +230,7 @@ class UserDataService(object):
                 },
             },
             "mappings": {
-                'folder': {
+                'node': {
                     "_source": { "compress": "true" },
                     "_all" : {"enabled" : False},
                     'properties': {
@@ -247,21 +244,9 @@ class UserDataService(object):
                         },
                         'parent': {
                             'type': 'string', 'index': 'not_analyzed'
-                        }
-                    }
-                },
-                'file': {
-                    'properties': {
-                        'name': {
-                            'type': 'string', 'index': 'analyzed'
                         },
-                        'folder': {
+                        'type': {
                             'type': 'string', 'index': 'not_analyzed'
-                        },
-                        'date_modified': {
-                            'type': 'date', 
-                            'format':'yyyy-MM-dd HH:mm', 
-                            'index': 'not_analyzed'
                         },
                         'size': {
                             'type': 'string', 'index': 'not_analyzed'
@@ -281,7 +266,54 @@ class UserDataService(object):
         When all folders are compared and properly index then walk through
         each folder and compare its files with the files in the index.
         '''
-        pass
+        search_url = '{idx_name}/_search'.format(idx_name=self.user.uid)
+        results = self.es_service.conn.get(search_url,data={
+            "from": 0,
+            "size": 999999999,
+            "fields": [],
+            "query": {
+                "bool": {
+                    "must": [{
+                        "term": {
+                            "type": "folder"
+                        }
+                    }]
+                }
+            }
+        })['hits']['hits']
+        results = {doc['_id']:doc for doc in results}
+        disk_folders = self.find_all_folders()
+        disk_folders = (
+            {uenc(folder['path']):folder for folder in disk_folders})
+        es_folders = set(results.keys())
+        folders = set(disk_folders.keys())
+        deleted_docs = es_folders - folders
+        new_docs = folders - es_folders
+        print deleted_docs
+        """
+        for doc_to_delete in deleted_docs:
+            del_url = '{idx_name}/node/{id}'.format(
+                idx_name=self.user.uid,
+                id=doc_to_delete)
+            result = self.es_service.conn.delete(del_url)
+            print result
+        """
+        print new_docs
+        for new_document in new_docs:
+            folder = disk_folders[new_document]
+            parent = uenc(folder['parent'])
+            put_url = '{idx_name}/node/{id}'.format(
+                idx_name=self.user.uid,
+                id=new_document)
+            print put_url
+            result = self.es_service.conn.put(put_url,data={
+                'name':folder['name'],
+                'parent':parent,
+                'date_modified':folder['date_modified'],
+                'size':'',
+                'type':'folder'
+            })
+            print result
     
     def do_folder_sync(self, folder):
         '''
@@ -289,7 +321,7 @@ class UserDataService(object):
         and files and return the correct results based what is stored on disk.
         '''
         if isinstance(folder, Folder):
-            index_id = urllib.quote_plus(folder)
+            index_id = uenc(folder)
     
     @staticmethod
     def index_all_users():

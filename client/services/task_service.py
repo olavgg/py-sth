@@ -65,7 +65,6 @@ class TaskService(object):
         
     def remove(self):
         ''' Delete the Task '''
-        #LOG.debug('Deleting task: {t}'.format(t=self.name))
         del(TaskService.tasks[self.name])
         del(self)
         
@@ -93,13 +92,10 @@ class Worker(Process):
             try:
                 name = self.w_queue.get(self.wait)
                 task = TaskService.find_task_by_name(name)
-                #LOG.debug("Starting " + str(task) + " ...")
                 task.func(task.values)
                 task.remove()
                 self.w_queue.task_done()
             except Empty:
-                #LOG.debug('Work queue is empty.')
                 break
             except Exception:
-                #LOG.error('Unknown exception in work function.')
                 break

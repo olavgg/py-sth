@@ -95,10 +95,21 @@ def create(uid):
         return jsonify(EsService().create_index(user.uid, overwrite=True))
     abort(404)
 
-@PAGE.route("/es/update/<idx_id>/<user>/", methods=['GET','POST'])
+@PAGE.route("/es/update/folder/<node_id>/<uid>/", methods=['GET','POST'])
 @with_http_auth
-def update_folder(idx_id, user):
+def update_folder(node_id, uid):
     ''' Update folder '''
+    data = {}
+    return jsonify(data)
+
+@PAGE.route("/es/update/index/<uid>/", methods=['GET','POST'])
+@with_http_auth
+def update_index(uid):
+    ''' Update folder '''
+    user = User.get(uid)
+    if user:
+        UserDataService(user).do_full_sync()
+    
     data = {}
     return jsonify(data)
 

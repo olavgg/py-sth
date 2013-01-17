@@ -51,7 +51,8 @@ class Bootstrap(object):
         ''' Init dev data '''
         User('testolav')
         User('olavgg')
-        UserDataService.index_all_users()
+        User('olav')
+        #UserDataService.index_all_users()
         
     @staticmethod
     def init_test_data():
