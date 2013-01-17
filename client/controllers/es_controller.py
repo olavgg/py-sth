@@ -51,7 +51,7 @@ def index():
 def listall(uid):
     ''' List data from the specified user '''
     user = User.get(uid)
-    data = UserDataService(user).find_all()
+    data = UserDataService(user).find_all_folders()
     return jsonify(data)
 
 @PAGE.route("/es/build/<uid>/", methods=['GET', 'POST'])
