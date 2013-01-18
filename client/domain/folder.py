@@ -23,62 +23,56 @@ Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
-from domain.file import File
+import os
+from urllib import unquote_plus
+import datetime
 
-class Folder(object):
+from conf import LOG
+from conf import CONFIG
+from conf import DATEFORMAT
+from domain.file import File
+from domain.node import Node
+
+class Folder(Node):
     ''' Folder class '''
 
     def __init__(self, values):
         ''' Constructor '''
+        Node.__init__(self, values)
+        if isinstance(values['parent'], Node):
+            self.__parent = values['parent']
+        else:
+            self.__parent = None
         self.__files = []
         self.__folders = []
-        self.__name = values['name']
-        self.__index_id = None
-        self.index_id(values['name'])
-        self.__path = values['path']
-        
         
     @staticmethod
-    def get_instance(index_id, device_type):
-        ''' Loads a file from type, DISK or ELASTICSEARCH '''
-        values = {}
-        if device_type == 'DISK':
-            pass
-        elif device_type == 'ELASTICSEARCH':
-            pass
+    def get_instance(path, decode=False):
+        ''' Create folder meta-data by reading it from disk '''
+        if decode:
+            path = CONFIG['USER_HOME_PATH'] + unquote_plus(path)
+        disk_path = CONFIG['USER_HOME_PATH'] + path
+        if os.path.exists(disk_path):
+            parent = Node.get_instance(os.path.dirname(disk_path))
+            date_modified = datetime.datetime.fromtimestamp(
+                os.path.getmtime(disk_path)).strftime(DATEFORMAT)
+            values = {
+                'name':os.path.basename(disk_path),
+                'path':path,
+                'sys_path':disk_path,
+                'parent':parent,
+                'date_modified':date_modified
+            }
         else:
-            raise TypeError('device_type must be of type Folder or List')
+            error_msg = u"path doesn't exist"
+            LOG.error(error_msg)
+            raise ValueError(error_msg)
         return Folder(values)
     
     @property
-    def index_id(self):
-        ''' Get id '''
-        return self.__index_id
-    
-    @index_id.setter
-    def index_id(self, value):
-        ''' Set name '''
-        self.__index_id = value
-        
-    @property
-    def path(self):
-        ''' Get path '''
-        return self.__path
-    
-    @path.setter
-    def path(self, value):
-        ''' Set path '''
-        self.__path = value
-    
-    @property
-    def name(self):
-        ''' Get name '''
-        return self.__name
-    
-    @name.setter
-    def name(self, value):
-        ''' Set name '''
-        self.__name = value
+    def parent(self):
+        ''' Get parent '''
+        return self.__parent
     
     @property
     def files(self):

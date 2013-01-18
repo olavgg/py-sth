@@ -40,6 +40,7 @@ class Config(object):
     GREP = "/usr/bin/grep"
     ZFS = "/sbin/zfs"
     ZPOOL = "/sbin/zpool"
+    DATEFORMAT = '%Y-%m-%d %H:%M'
     
     @staticmethod
     def set_app_password(password):

@@ -35,6 +35,8 @@ from services.user_data_service import UserDataService
 from services.es_service import EsService
 from services.task_service import TaskService as TS
 from services.user_data_service import build_process
+from services.user_data_service import full_sync_process
+from services.user_data_service import folder_sync_process
 from domain.user import User
 
 PAGE = Blueprint('es_page', __name__)
@@ -95,23 +97,41 @@ def create(uid):
         return jsonify(EsService().create_index(user.uid, overwrite=True))
     abort(404)
 
-@PAGE.route("/es/update/folder/<node_id>/<uid>/", methods=['GET','POST'])
+@PAGE.route("/es/sync/folder/<node_id>/<uid>/", methods=['GET','POST'])
 @with_http_auth
-def update_folder(node_id, uid):
-    ''' Update folder '''
-    data = {}
-    return jsonify(data)
-
-@PAGE.route("/es/update/index/<uid>/", methods=['GET','POST'])
-@with_http_auth
-def update_index(uid):
-    ''' Update folder '''
+def sync_folder(node_id, uid):
+    '''
+    Sync the folder by comparing datastructures on both the filesystem and the
+    ES DB.
+    '''
     user = User.get(uid)
     if user:
-        UserDataService(user).do_full_sync()
-    
-    data = {}
-    return jsonify(data)
+        try:
+            TS(folder_sync_process, user=user, node_id=node_id)
+        except ValueError, error:
+            LOG.error(error)
+            return jsonify(dict(error='job is already running'))
+        data = dict(status='ok')
+        return jsonify(data)
+    abort(404)
+
+@PAGE.route("/es/fullsync/<uid>/", methods=['GET','POST'])
+@with_http_auth
+def fullsync(uid):
+    '''
+    Sync the filesystem and ES DB by scanning and comparing datastructures
+    on both the filesystem and ES DB.
+    '''
+    user = User.get(uid)
+    if user:
+        try:
+            TS(full_sync_process, user=user)
+        except ValueError, error:
+            LOG.error(error)
+            return jsonify(dict(error='job is already running'))
+        data = dict(status='ok')
+        return jsonify(data)
+    abort(404)
 
 @PAGE.route("/es/get/<idx_id>/<user>/", methods=['GET','POST'])
 @with_http_auth

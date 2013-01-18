@@ -26,3 +26,4 @@ Created on Dec 30, 2012
 from base import Base
 LOG = Base.get_instance().app.logger
 CONFIG = Base.get_instance().app.config
+DATEFORMAT = CONFIG['DATEFORMAT']

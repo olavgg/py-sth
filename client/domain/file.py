@@ -23,55 +23,73 @@ Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
+import os
+import datetime
+from urllib import unquote_plus
 
-class File(object):
+from conf import CONFIG
+from conf import LOG
+from conf import DATEFORMAT
+from domain.node import Node
+
+class File(Node):
     ''' File class '''
 
-    def __init__(self, name, folder):
+    def __init__(self, values):
         ''' Constructor '''
-        from domain.folder import Folder
-        if isinstance(folder, Folder):
-            self._folder = folder
+        Node.__init__(self, values)
+        if isinstance(values['parent'], Node):
+            self.__parent = values['parent']
         else:
-            self._folder = None
-        self._name = name
+            self.__parent = None
+        self.__size = values['size']
         
     @staticmethod
-    def get_instance(name, folder):
-        return File(name, folder)
-    
-    @property
-    def name(self):
-        ''' Get name '''
-        return self._name
-    
-    @name.setter
-    def name(self, value):
-        ''' Set name '''
-        self._name = value
-        
-    @property
-    def path(self):
-        ''' Get path '''
-        return self.__path
-    
-    @path.setter
-    def path(self, value):
-        ''' Set path '''
-        self.__path = value
-    
-    @property
-    def folder(self):
-        ''' Get folder '''
-        return self._folder
-    
-    @folder.setter
-    def folder(self, value):
-        ''' Set folder that the file belongs to '''
-        if isinstance(value, Folder):
-            self._folder = value
+    def get_instance(path, decode=False):
+        ''' Create file meta-data by reading it from disk '''
+        if decode:
+            path = CONFIG['USER_HOME_PATH'] + unquote_plus(path)
+        disk_path = CONFIG['USER_HOME_PATH'] + path
+        if os.path.exists(disk_path):
+            parent = Node.get_instance(os.path.dirname(disk_path))
+            date_modified = datetime.datetime.fromtimestamp(
+                os.path.getmtime(disk_path)).strftime(DATEFORMAT)
+            values = {
+                'name': os.path.basename(disk_path),
+                'parent': parent,
+                'path': path,
+                'sys_path': disk_path,
+                'date_modified': date_modified
+            }
         else:
-            raise TypeError('argument must be of type File or List')
-        
+            error_msg = u"path doesn't exist"
+            LOG.error(error_msg)
+            raise ValueError(error_msg)
+        return File(values)
     
+    @property
+    def size(self):
+        ''' Get size '''
+        return self.__size
+    
+    @size.setter
+    def size(self, value):
+        ''' Set size '''
+        if isinstance(value,int) or isinstance(value,long):
+            self.__size = Node.sizeof_fmt(value)
+        else:
+            self.__size = value
+    
+    @property
+    def parent(self):
+        ''' Get parent '''
+        return self.__parent
+    
+    @parent.setter
+    def parent(self, value):
+        ''' Set folder / parent that the file belongs to '''
+        if isinstance(value, Node):
+            self.__parent = value
+        else:
+            raise TypeError(u'Argument must be of type Node')
         
