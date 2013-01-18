@@ -84,10 +84,10 @@ class Folder(Node):
         ''' Set files, new list if value is list or append a new File '''
         if isinstance(value, list):
             self.__files = value
-        elif isinstance(value, File):
+        elif isinstance(value, Node):
             self.__files.append(value)
         else:
-            raise TypeError('argument must be of type File or List')
+            raise TypeError('argument must be of type Node or List')
         
     @property
     def folders(self):
@@ -99,9 +99,9 @@ class Folder(Node):
         ''' Set files, new list if value is list or append a new File '''
         if isinstance(value, list):
             self.__folders = value
-        elif isinstance(value, Folder):
+        elif isinstance(value, Node):
             self.__folders.append(value)
         else:
-            raise TypeError('argument must be of type Folder or List')
+            raise TypeError('argument must be of type Node or List')
     
         
