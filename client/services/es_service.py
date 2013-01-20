@@ -89,7 +89,8 @@ class EsService(object):
                 dbuf = []
             dbuf.append(item)
             counter += 1
-        self.__do_bulk_insert(path, dbuf)
+        if dbuf:
+            self.__do_bulk_insert(path, dbuf)
             
     def __do_bulk_insert(self, path, databulk):
         ''' Private function that does the actual bulk insert to ES '''

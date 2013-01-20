@@ -94,9 +94,9 @@ class UserDataService(object):
     
     def find_all_folders(self):
         ''' Find all folders for user '''
-        cmd = ('ls -Ra {path} '
-               '| grep -e "./.*:" | sed "s/://;s/\{path}//"').format(
-            path = self.path
+        cmd = ('find {path} -type d | sed "s/\{syspath}//"').format(
+            path = self.path,
+            syspath = self.syspath
         )
         LOG.debug(cmd)
         results = ShellCommand(cmd).run()
@@ -107,7 +107,7 @@ class UserDataService(object):
             parent_folder = line[:-(len(folder)+1)]
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(self.syspath+line)).strftime(DATEFORMAT)
-            data = {'name':folder,'parent':parent_folder,
+            data = {'name':folder, 'parent':parent_folder,
                 'path':line,'date_modified':date_modified}
             folders.append(data)
         return folders
@@ -120,7 +120,7 @@ class UserDataService(object):
         results = ShellCommand(cmd).run()
         files = []
         for line in results[0]:
-            path = '{folder}/{file}'.format(folder=folder['path'],file=line)
+            path = '{folder}/{file}'.format(folder=folder['path'], file=line)
             fullpath = self.syspath+path
             size = Node.sizeof_fmt(os.path.getsize(fullpath))
             date_modified = datetime.datetime.fromtimestamp(
@@ -154,7 +154,7 @@ class UserDataService(object):
             }
             folder_bulk.append(data)
             items_indexed += self.index_files(folder)
-        self.es_service.bulk_insert(self.es_node_path,folder_bulk)
+        self.es_service.bulk_insert(self.es_node_path, folder_bulk)
         items_indexed += len(folders)
         return items_indexed
     
@@ -175,7 +175,7 @@ class UserDataService(object):
             }
             file_bulk.append(fdata)
         if len(file_bulk) > 0:
-            self.es_service.bulk_insert(self.es_node_path,file_bulk)
+            self.es_service.bulk_insert(self.es_node_path, file_bulk)
         return len(file_bulk)
         
     def build_index(self):
@@ -266,7 +266,7 @@ class UserDataService(object):
         each folder and compare its files with the files in the index.
         '''
         search_url = '{idx_name}/_search'.format(idx_name=self.user.uid)
-        results = self.es_service.conn.get(search_url,data={
+        results = self.es_service.conn.get(search_url, data={
             "from": 0,
             "size": 999999999,
             "fields": [],
@@ -313,7 +313,7 @@ class UserDataService(object):
         put_url = '{idx_name}/node/{id}'.format(
             idx_name=self.user.uid,
             id=uenc(uenc(node['path']))) # dual url encoding as ES decodes it
-        result = self.es_service.conn.put(put_url,data={
+        result = self.es_service.conn.put(put_url, data={
             'name':node['name'],
             'parent':parent,
             'date_modified':node['date_modified'],

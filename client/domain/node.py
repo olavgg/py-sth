@@ -25,6 +25,7 @@ Created on Jan 18, 2013
 '''
 
 import os
+import errno
 from urllib import unquote_plus
 from urllib import quote_plus
 import datetime
@@ -115,3 +116,18 @@ class Node(object):
                 return "%3.1f%s" % (num, x)
             num /= 1024.0
         return "%3.1f%s" % (num, 'TB')
+    
+    @staticmethod
+    def is_broken_symlink(path):
+        ''' Check if symlink is broken '''
+        if os.path.islink(path):
+            try:
+                os.stat(path)
+            except os.error, err:
+                if err.errno == errno.ENOENT:
+                    LOG.error('broken link')
+                elif err.errno == errno.ELOOP:
+                    LOG.error('circular link')
+                LOG.error(err)
+                return True
+        return False
