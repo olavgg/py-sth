@@ -97,9 +97,9 @@ def create(uid):
         return jsonify(EsService().create_index(user.uid, overwrite=True))
     abort(404)
 
-@PAGE.route("/es/sync/folder/<node_id>/<uid>/", methods=['GET','POST'])
+@PAGE.route("/es/sync/folder/<uid>/<node_id>/", methods=['GET','POST'])
 @with_http_auth
-def sync_folder(node_id, uid):
+def sync_folder(uid, node_id):
     '''
     Sync the folder by comparing datastructures on both the filesystem and the
     ES DB.

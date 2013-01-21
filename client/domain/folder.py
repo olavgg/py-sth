@@ -32,6 +32,7 @@ from conf import CONFIG
 from conf import DATEFORMAT
 from domain.file import File
 from domain.node import Node
+from services.shell_command import ShellCommand
 
 class Folder(Node):
     ''' Folder class '''
@@ -50,10 +51,13 @@ class Folder(Node):
     def get_instance(path, decode=False):
         ''' Create folder meta-data by reading it from disk '''
         if decode:
-            path = CONFIG['USER_HOME_PATH'] + unquote_plus(path)
+            path = unquote_plus(path)
         disk_path = CONFIG['USER_HOME_PATH'] + path
-        if os.path.exists(disk_path):
-            parent = Node.get_instance(os.path.dirname(disk_path))
+        LOG.debug(disk_path)
+        if os.path.exists(disk_path) == True:
+            parent_path = os.path.dirname(disk_path).replace(
+                CONFIG['USER_HOME_PATH'], '')
+            parent = Node.get_instance(parent_path)
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(disk_path)).strftime(DATEFORMAT)
             values = {
@@ -77,7 +81,18 @@ class Folder(Node):
     @property
     def files(self):
         ''' Get files '''
+        if not self.__files:
+            self.scan_for_files()
         return self.__files
+    
+    def scan_for_files(self):
+        ''' Scan for files '''
+        files = [o for o in os.listdir(
+            self.sys_path) if os.path.isfile(self.sys_path+'/'+o)]
+        for line in files:
+            path = '{folder}/{file}'.format(folder=self.path, file=line)
+            node = Node.get_instance(path)
+            self.__files.append(node)
     
     @files.setter
     def files(self, value):
@@ -92,11 +107,22 @@ class Folder(Node):
     @property
     def folders(self):
         ''' Get folders '''
+        if not self.__folders:
+            self.scan_for_folders()
         return self.__folders
+    
+    def scan_for_folders(self):
+        ''' Scan for folders '''
+        sub_folders = [o for o in os.listdir(
+            self.sys_path) if os.path.isdir(self.sys_path+'/'+o)]
+        for line in sub_folders:
+            path = '{folder}/{node}'.format(folder=self.path, node=line)
+            node = Node.get_instance(path)
+            self.__folders.append(node)
     
     @folders.setter
     def folders(self, value):
-        ''' Set files, new list if value is list or append a new File '''
+        ''' Set folders, new list if value is list or append a new Folder. '''
         if isinstance(value, list):
             self.__folders = value
         elif isinstance(value, Node):

@@ -49,9 +49,10 @@ class Node(object):
     def get_instance(path, decode=False):
         ''' Create node meta-data by reading it from disk '''
         if decode:
-            path = CONFIG['USER_HOME_PATH'] + unquote_plus(path)
+            path = unquote_plus(path)
         disk_path = CONFIG['USER_HOME_PATH'] + path
-        if os.path.exists(disk_path):
+        LOG.debug(disk_path)
+        if os.path.exists(disk_path) == True:
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(disk_path)).strftime(DATEFORMAT)
             values = {

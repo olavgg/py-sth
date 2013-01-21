@@ -98,7 +98,6 @@ class UserDataService(object):
             path = self.path,
             syspath = self.syspath
         )
-        LOG.debug(cmd)
         results = ShellCommand(cmd).run()
         folders = []
         for line in results[0]:
@@ -109,6 +108,24 @@ class UserDataService(object):
                 os.path.getmtime(self.syspath+line)).strftime(DATEFORMAT)
             data = {'name':folder, 'parent':parent_folder,
                 'path':line,'date_modified':date_modified}
+            folders.append(data)
+        return folders
+    
+    def find_folder_folders(self, folder):
+        ''' Find all files for given folder '''
+        cmd = 'find "{path}" -maxdepth 1 -type d | sed "s#.*/##"'.format(
+            path = folder.sys_path
+        )
+        results = ShellCommand(cmd).run()
+        folders = []
+        for line in results[0]:
+            path = '{folder}/{file}'.format(folder=folder.path, file=line)
+            date_modified = datetime.datetime.fromtimestamp(
+                os.path.getmtime(folder.sys_path)).strftime(DATEFORMAT)
+            data = {
+                'name':line,'parent':folder.path,'path':path,
+                'date_modified':date_modified
+            }
             folders.append(data)
         return folders
     
@@ -292,6 +309,7 @@ class UserDataService(object):
             self.delete_document_by_id(doc_to_delete)
         for new_document in new_docs:
             self.index_document_by_node(disk_folders[new_document])
+        LOG.debug('Full sync for {uid} done.'.format(uid=self.user.uid))
             
     def delete_document_by_id(self, document_id):
         ''' Deletes a document from ES by id string argument '''
@@ -343,14 +361,25 @@ class UserDataService(object):
                     "bool": {
                         "must": [{
                             "term": {
-                                "parent": "folder"
+                                "parent": index_id
                             }
                         }]
                     }
                 }
             })['hits']['hits']
+            results = {doc['_id']:doc for doc in results}
+            disk_folders = folder.folders
+            print disk_folders
         else:
-            LOG.error('')
+            LOG.error('No folder found by passing node id: {node_id}'.format(
+                node_id=node_id
+            ))
+        LOG.debug('Folder sync for {uid} done.'.format(uid=self.user.uid))
+        
+    def compare_folders(self, node_id):
+        pass
+    def compare_files(self, node_id):
+        pass
     
     @staticmethod
     def index_all_users():

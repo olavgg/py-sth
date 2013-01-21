@@ -48,6 +48,7 @@ class ShellCommand(object):
         
     def run(self):
         ''' Execute the cmd '''
+        LOG.debug(self.cmd)
         output = Popen(self.cmd, shell=True, stdout=PIPE, stderr=PIPE)
         data = output.communicate()
         lines = data[0].splitlines()
