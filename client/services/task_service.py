@@ -97,5 +97,9 @@ class Worker(Process):
                 self.w_queue.task_done()
             except Empty:
                 break
-            except Exception:
+            except Exception, err:
+                from conf import LOG
+                LOG.exception(str(err))
+                task.remove()
+                self.w_queue.task_done()
                 break

@@ -38,28 +38,34 @@ class Node(object):
     ''' Simple representation of a file/folder object '''
     
     def __init__(self, values):
-        ''' Constructor '''
+        ''' Constructor, added fix for quote_plus lack of unicode support '''
         self.__name = values['name']
-        self.__index_id = values['name']
+        values['path'] = values['path'].encode('utf-8')
+        self.__index_id = quote_plus(values['path'])
         self.__path = values['path']
         self.__sys_path = values['sys_path']
         self.__date_modified = values['date_modified']
+        self.__type = values['type']
         
     @staticmethod
     def get_instance(path, decode=False):
         ''' Create node meta-data by reading it from disk '''
         if decode:
             path = unquote_plus(path)
-        disk_path = CONFIG['USER_HOME_PATH'] + path
-        LOG.debug(disk_path)
+        disk_path = unicode(CONFIG['USER_HOME_PATH'] + path)
         if os.path.exists(disk_path) == True:
+            if os.path.isfile(disk_path):
+                node_type='FILE'
+            elif os.path.isdir(disk_path):
+                node_type='FOLDER'
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(disk_path)).strftime(DATEFORMAT)
             values = {
                 'name':os.path.basename(disk_path),
                 'path':path,
                 'sys_path':disk_path,
-                'date_modified':date_modified
+                'date_modified':date_modified,
+                'type':node_type
             }
         else:
             error_msg = u"path doesn't exist"
@@ -75,6 +81,7 @@ class Node(object):
     @index_id.setter
     def index_id(self, value):
         ''' Set name '''
+        value = value.encode('utf-8')
         self.__index_id = quote_plus(value)
         
     @property
@@ -106,6 +113,34 @@ class Node(object):
     def name(self, value):
         ''' Set name '''
         self.__name = value
+        
+    @property
+    def date_modified(self):
+        ''' Get date modified '''
+        return self.__date_modified
+    
+    @date_modified.setter
+    def date_modified(self, value):
+        ''' Set date modified '''
+        self.__date_modified = value
+        
+    @property
+    def type(self):
+        ''' Get type '''
+        return self.__type
+    
+    @type.setter
+    def type(self, value):
+        ''' Set type '''
+        self.__type = value
+        
+    def get_parent(self):
+        ''' Return parent folder for node '''
+        return self.path[:-(len(self.name)+1)]
+    
+    def get_size(self):
+        ''' Return node disk size '''
+        return Node.sizeof_fmt(os.path.getsize(unicode(self.sys_path)))
         
     @staticmethod
     def sizeof_fmt(num):

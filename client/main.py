@@ -56,11 +56,11 @@ class PYSTHClient(object):
         Start the application
         '''
         base = Base.get_instance()
+        FORMAT = '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
         logging.basicConfig(
             filename=base.app.config["LOGFILE"],
             level=logging.DEBUG,
-            format='%(asctime)s %(levelname)s: %(message)s '
-                    '[in %(pathname)s:%(lineno)d]'
+            format=FORMAT
         )
         PYSTHClient.init_controllers(base)
         @base.app.before_first_request

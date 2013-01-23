@@ -52,8 +52,7 @@ class Folder(Node):
         ''' Create folder meta-data by reading it from disk '''
         if decode:
             path = unquote_plus(path)
-        disk_path = CONFIG['USER_HOME_PATH'] + path
-        LOG.debug(disk_path)
+        disk_path = unicode(CONFIG['USER_HOME_PATH'] + path)
         if os.path.exists(disk_path) == True:
             parent_path = os.path.dirname(disk_path).replace(
                 CONFIG['USER_HOME_PATH'], '')
@@ -65,7 +64,8 @@ class Folder(Node):
                 'path':path,
                 'sys_path':disk_path,
                 'parent':parent,
-                'date_modified':date_modified
+                'date_modified':date_modified,
+                'type':'FOLDER'
             }
         else:
             error_msg = u"path doesn't exist"
@@ -90,7 +90,7 @@ class Folder(Node):
         files = [o for o in os.listdir(
             self.sys_path) if os.path.isfile(self.sys_path+'/'+o)]
         for line in files:
-            path = '{folder}/{file}'.format(folder=self.path, file=line)
+            path = u'{folder}/{file}'.format(folder=self.path, file=line)
             node = Node.get_instance(path)
             self.__files.append(node)
     
@@ -130,4 +130,15 @@ class Folder(Node):
         else:
             raise TypeError('argument must be of type Node or List')
     
-        
+    @staticmethod
+    def find_all_folders(user):
+        ''' Find all folders for user '''
+        cmd = ('find {path}/{uid} -type d | sed "s/\{path}//"').format(
+            path = CONFIG['USER_HOME_PATH'],
+            uid = user.uid,
+        )
+        results = ShellCommand(cmd).run()
+        folders = []
+        for line in results[0]:
+            folders.append(Folder.get_instance(line))
+        return folders

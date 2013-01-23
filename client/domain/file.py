@@ -49,7 +49,7 @@ class File(Node):
         ''' Create file meta-data by reading it from disk '''
         if decode:
             path = unquote_plus(path)
-        disk_path = CONFIG['USER_HOME_PATH'] + path
+        disk_path = unicode(CONFIG['USER_HOME_PATH'] + path)
         LOG.debug(disk_path)
         if os.path.exists(disk_path) == True:
             parent_path = os.path.dirname(disk_path).replace(
@@ -62,7 +62,8 @@ class File(Node):
                 'parent': parent,
                 'path': path,
                 'sys_path': disk_path,
-                'date_modified': date_modified
+                'date_modified': date_modified,
+                'type':'FILE'
             }
         else:
             error_msg = u"path doesn't exist"
