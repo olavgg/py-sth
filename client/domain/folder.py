@@ -88,7 +88,8 @@ class Folder(Node):
     def scan_for_files(self):
         ''' Scan for files '''
         files = [o for o in os.listdir(
-            self.sys_path) if os.path.isfile(self.sys_path+'/'+o)]
+            self.sys_path) if (os.path.isfile(self.sys_path+'/'+o) and not
+            os.path.islink(self.sys_path+'/'+o))]
         for line in files:
             path = u'{folder}/{file}'.format(folder=self.path, file=line)
             node = Node.get_instance(path)
@@ -131,12 +132,17 @@ class Folder(Node):
             raise TypeError('argument must be of type Node or List')
     
     @staticmethod
-    def find_all_folders(user):
+    def find_all_folders(user, folder=None):
         ''' Find all folders for user '''
-        cmd = ('find {path}/{uid} -type d | sed "s/\{path}//"').format(
-            path = CONFIG['USER_HOME_PATH'],
-            uid = user.uid,
-        )
+        if folder == None:
+            cmd = (u'find {path}/{uid} -type d | sed "s/\{path}//"').format(
+                path = CONFIG['USER_HOME_PATH'],
+                uid = user.uid,
+            )
+        else:
+            cmd = (u'find {path} -type d | sed "s/\{path}//"').format(
+                path = folder.syspath
+            )
         results = ShellCommand(cmd).run()
         folders = []
         for line in results[0]:

@@ -55,7 +55,9 @@ class TaskService(object):
         self.values = values
         TaskService.tasks[self.name] = self
         TaskService.work_queue.put(self.name)
-        if len([1 for v in active_children() if isinstance(v,Worker)]) < 1:
+        from conf import CONFIG
+        max_p = CONFIG['MAX_PROCESSES']
+        if len([1 for v in active_children() if isinstance(v,Worker)]) < max_p:
             worker = Worker(TaskService.work_queue, wait=values['wait'])
             worker.start()
         

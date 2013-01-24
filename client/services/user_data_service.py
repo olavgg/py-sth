@@ -92,12 +92,21 @@ class UserDataService(object):
         ''' Set full system path '''
         self.__syspath = value
     
-    def find_all_folders(self):
+    def find_all_folders(self, folder=None):
         ''' Find all folders for user '''
-        cmd = u'find {path} -type d | sed "s/\{syspath}//"'.format(
-            path = self.path,
-            syspath = self.syspath
-        )
+        if folder == None:
+            cmd = u'find {path} -type d | sed "s/\{syspath}//"'.format(
+                path = self.path,
+                syspath = self.syspath
+            )
+        else:
+            if isinstance(folder, Folder):
+                cmd = u'find {path} -type d | sed "s/\{syspath}//"'.format(
+                    path = folder.sys_path,
+                    syspath = self.syspath
+                )
+            else:
+                raise TypeError(u'folder is not of type domain.folder.Folder')
         results = ShellCommand(cmd).run()
         folders = []
         for line in results[0]:
@@ -138,10 +147,13 @@ class UserDataService(object):
         )
         results = ShellCommand(cmd).run()
         files = []
+        if folder['path'] == "/olavgg/truls/Dokumenter/faenza-sources_1.2/__radiance/status/22":
+            LOG.debug(cmd)
         for line in results[0]:
             line = unicode(line, 'utf8')
             path = u'{folder}/{file}'.format(folder=folder['path'], file=line)
             fullpath = unicode(self.syspath+path)
+
             size = Node.sizeof_fmt(os.path.getsize(fullpath))
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(fullpath)).strftime(DATEFORMAT)
@@ -152,14 +164,14 @@ class UserDataService(object):
             files.append(data)
         return files
     
-    def index_folders_and_files(self):
+    def index_folders_and_files(self, folder=None):
         '''
         Uses the FolderService to find all folders for the user. Path to
         the folder is urlencoded and assigned as a id for the Folder type
         in the ElasticSearch index.
         '''
         items_indexed = 0
-        folders = self.find_all_folders()
+        folders = self.find_all_folders(folder)
         folder_bulk = []
         for folder in folders:
             index_id = uenc(folder['path'].encode('utf-8'))
@@ -284,23 +296,44 @@ class UserDataService(object):
                 }
             }
         }
+    def find_by_parent_id(self, parent_id):
+        ''' Return document ids by parent id '''
+        query_url = '{idx_name}/node/_search'.format(idx_name=self.user.uid)
+        results = self.es_service.conn.get(query_url,data={
+                "from": 0,
+                "size": 999999999,
+                "fields": [],
+                "query": {
+                    "bool": {
+                        "must": [{
+                            "term": {
+                                "parent": parent_id
+                            }
+                        }]
+                    }
+                }
+            })
+        if results['status'] != 200:
+            return list()
+        return [ doc['_id'] for doc in results['hits']['hits'] ]
         
-    def do_full_sync(self):
+    def delete_document_by_parent_id(self, document_id):
+        ''' 
+        Deletes documents from ES by id string argument, delete nodes
+        that has the id as parent. 
         '''
-        Do a full sync of the user filesystem. Find all folders from the
-        user's filesystem and fetch all the folders in user's index. Compare
-        them, find the NEW and DELETED folders. This will also work with
-        renamed folders.
+        ids_to_delete = self.find_by_parent_id(document_id)
+        del_url = '{idx_name}/node/_query'.format(idx_name=self.user.uid)
+        result = self.es_service.conn.delete(del_url, data={
+            "term" : { "parent" : document_id }
+        })
+        if result['status'] != 200:
+            LOG.error(u'Couldn\'t delete documents by parent: {doc} from ES'
+                      .format(doc=document_id))
+        return ids_to_delete
         
-        When all folders are compared and properly index then walk through
-        each folder and compare its files with the files in the index.
-        '''
-        disk_folders = Folder.find_all_folders(self.user)
-        for folder in disk_folders:
-            self.do_folder_sync(folder.index_id)
-            
     def delete_document_by_id(self, document_id):
-        ''' Deletes a document from ES by id string argument '''
+        ''' Deletes documents from ES by id string argument '''
         del_url = '{idx_name}/node/{id}'.format(
             idx_name=self.user.uid,
             id=uenc(document_id)) # dual url encoding as ES decodes it
@@ -309,7 +342,9 @@ class UserDataService(object):
             LOG.error(u'Couldn\'t delete document: {doc} from ES'.format(
                 doc=del_url
             ))
-        LOG.debug(u'Deleted document {name}'.format(name=document_id))
+            return ''
+        else:
+            return document_id
             
     def index_document_by_node(self, node):
         ''' Index a node by supplying a node argument '''
@@ -343,9 +378,10 @@ class UserDataService(object):
         on disk.
         '''
         folder = Folder.get_instance(node_id, decode=True)
-        if isinstance(folder, Folder):
+        if folder:
             index_id = uenc(folder.path)
-            search_url = '{idx_name}/_search'.format(idx_name=self.user.uid)
+            search_url = u'{idx_name}/node/_search'.format(
+                idx_name=self.user.uid)
             results = self.es_service.conn.get(search_url,data={
                 "from": 0,
                 "size": 999999999,
@@ -359,8 +395,8 @@ class UserDataService(object):
                         }]
                     }
                 }
-            })['hits']['hits']
-            es_node_ids = set([doc['_id'] for doc in results])
+            })
+            es_node_ids = set([doc['_id'] for doc in results['hits']['hits']])
             disk_nodes = {node.index_id:node for node in (
                 folder.folders + folder.files)}
             disk_node_ids = set(disk_nodes.keys())
@@ -374,10 +410,65 @@ class UserDataService(object):
             LOG.error('No folder found by passing node id: {node_id}'.format(
                 node_id=node_id
             ))
-        
-    def compare_nodes(self, disk_nodes, es_nodes):
-        if isinstance(disk_nodes, set) and isinstance(es_nodes, set):
-            pass
+            
+    def do_full_sync(self):
+        '''
+        Do a full sync of the user filesystem. Find all folders from the
+        user's filesystem compare them one by one. Then fetch all folders in
+        ES and compare them for a cleanup. In case some folders have been 
+        renamed.
+        '''
+        disk_folders = Folder.find_all_folders(self.user)
+        es_data = {"docs":[]}
+        for folder in disk_folders:
+            es_data["docs"].append({
+                "_index" : self.user.uid,
+                "_type" : "node",
+                "_id" : folder.index_id,
+                "fields" : ["_id"]
+            })
+        results = self.es_service.conn.get('_mget', data=es_data)
+        if results['status'] == 200:
+            es_results = [ d_id['_id'] for d_id in results['docs']
+                           if d_id['exists'] == True ]
+            for folder in disk_folders:
+                if folder.index_id in es_results:
+                    LOG.debug('Syncing folder: {f}'.format(f=folder.sys_path))
+                    self.do_folder_sync(folder.index_id)
+                else:
+                    LOG.debug('Created folder: {f}'.format(f=folder.sys_path))
+                    self.index_folders_and_files(folder=folder)
+        else:
+            LOG.error(u'Couldn\'t fetch documents. Full sync stopped.')
+            return
+        search_url = '{idx_name}/_search'.format(idx_name=self.user.uid)
+        es_docs = self.es_service.conn.get(search_url, data={
+            "from": 0,
+            "size": 999999999,
+            "fields": [],
+            "query": {
+                "bool": {
+                    "must": [{
+                        "term": {
+                            "type": "folder"
+                        }
+                    }]
+                }
+            }
+        })['hits']['hits']
+        es_docs = {doc['_id']:doc for doc in es_docs}
+        folder_nodes = {folder.index_id:folder for folder in disk_folders}
+        es_folders = set(es_docs.keys())
+        folders = set(folder_nodes.keys())
+        deleted_docs = es_folders - folders
+        deleted_ids = []
+        for doc_to_delete in deleted_docs:
+            deleted_ids += self.delete_document_by_parent_id(doc_to_delete)
+            if doc_to_delete not in deleted_ids:
+                deleted_ids.append(
+                    self.delete_document_by_id(doc_to_delete))
+        LOG.debug(u'Deleted nodes with id like:\n {name}'
+                  .format(name=deleted_ids))
     
     @staticmethod
     def index_all_users():

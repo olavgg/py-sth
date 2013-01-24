@@ -41,6 +41,7 @@ class Config(object):
     ZFS = "/sbin/zfs"
     ZPOOL = "/sbin/zpool"
     DATEFORMAT = '%Y-%m-%d %H:%M'
+    MAX_PROCESSES = 4
     
     @staticmethod
     def set_app_password(password):
