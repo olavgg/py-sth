@@ -71,9 +71,9 @@ def build(uid):
             TS(build_process, user=user)
         except ValueError, error:
             LOG.error(error)
-            return jsonify(dict(error='job is already running'))
-        data = dict(status='ok')
-        return jsonify(data)
+            return jsonify(dict(error='job is already running')), 200
+        data = dict(status='job created')
+        return jsonify(data), 201
     abort(404)
     
 @PAGE.route("/es/build/all/", methods=['GET', 'POST'])
@@ -110,9 +110,9 @@ def sync_folder(uid, node_id):
             TS(folder_sync_process, user=user, node_id=node_id)
         except ValueError, error:
             LOG.error(error)
-            return jsonify(dict(error='job is already running'))
-        data = dict(status='ok')
-        return jsonify(data)
+            return jsonify(dict(error='job is already running')), 200
+        data = dict(status='job created')
+        return jsonify(data), 201
     abort(404)
 
 @PAGE.route("/es/fullsync/<uid>/", methods=['GET','POST'])
@@ -128,9 +128,9 @@ def fullsync(uid):
             TS(full_sync_process, user=user)
         except ValueError, error:
             LOG.error(error)
-            return jsonify(dict(error='job is already running'))
-        data = dict(status='ok')
-        return jsonify(data)
+            return jsonify(dict(error='job is already running')), 200
+        data = dict(status='job created')
+        return jsonify(data), 201
     abort(404)
 
 @PAGE.route("/es/get/<idx_id>/<user>/", methods=['GET','POST'])

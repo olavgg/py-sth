@@ -115,11 +115,11 @@ class Base(object):
     def do_first_request():
         '''
         Flask will run the initialization procedure two times, so this function
-        is a workaround the Flask framework limitation of initializing data at
-        the application startup with the reloader enabled.
+        is a workaround for the Flask framework limitation of initializing data
+        at the application startup with the reloader enabled.
         '''
         try:
-            TaskService(first_request_process, wait=True, sleep=3)
+            TaskService(first_request_process, wait=True, sleep=1)
         except ValueError, err:
             Base.get_instance().get_logger().error(err)
 

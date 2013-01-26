@@ -92,7 +92,7 @@ class Worker(Process):
         ''' Executes a worker '''
         while not self.kill_received:
             try:
-                name = self.w_queue.get(self.wait)
+                name = self.w_queue.get(block=self.wait, timeout=3)
                 task = TaskService.find_task_by_name(name)
                 task.func(task.values)
                 task.remove()
