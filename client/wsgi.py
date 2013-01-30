@@ -23,6 +23,8 @@ SOFTWARE.
 Created on Dec 8, 2012
 
 @Author: Olav Groenaas Gjerde
+
+DO NOT USE THIS!!!!
 '''
 
 import os

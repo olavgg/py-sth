@@ -31,16 +31,16 @@ class Config(object):
 
     DEBUG = False
     TESTING = False
-    HOST = "0.0.0.0"
+    HOST = u"0.0.0.0"
     PORT = 18080
-    LOGFILE = 'debug.log'
-    AUTH_TOKEN = 'test123456'
-    USER_HOME_PATH = '/home'
-    SSH = "/usr/bin/ssh"
-    GREP = "/usr/bin/grep"
-    ZFS = "/sbin/zfs"
-    ZPOOL = "/sbin/zpool"
-    DATEFORMAT = '%Y-%m-%d %H:%M'
+    LOGFILE = u'debug.log'
+    AUTH_TOKEN = u'test123456'
+    USER_HOME_PATH = u'/home'
+    SSH = u"/usr/bin/ssh"
+    GREP = u"/usr/bin/grep"
+    ZFS = u"/sbin/zfs"
+    ZPOOL = u"/sbin/zpool"
+    DATEFORMAT = u'%Y-%m-%d %H:%M'
     MAX_PROCESSES = 4
     
     @staticmethod
@@ -75,7 +75,7 @@ class DevelopmentConfig(Config):
     Development config
     '''
     DEBUG = True
-    LOGFILE = 'debug.log'
+    LOGFILE = u'debug.log'
     
     @staticmethod
     def set_app_password(password):
@@ -93,7 +93,7 @@ class TestingConfig(Config):
     '''
 
     TESTING = True
-    LOGFILE = 'test.log'
+    LOGFILE = u'test.log'
     
     @staticmethod
     def set_app_password(password):

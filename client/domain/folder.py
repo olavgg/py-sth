@@ -30,7 +30,6 @@ import datetime
 from conf import LOG
 from conf import CONFIG
 from conf import DATEFORMAT
-from domain.file import File
 from domain.node import Node
 from services.shell_command import ShellCommand
 
@@ -40,10 +39,7 @@ class Folder(Node):
     def __init__(self, values):
         ''' Constructor '''
         Node.__init__(self, values)
-        if isinstance(values['parent'], Node):
-            self.__parent = values['parent']
-        else:
-            self.__parent = None
+        self.__parent = Node.get_instance(self.get_parent())
         self.__files = []
         self.__folders = []
         
@@ -51,24 +47,20 @@ class Folder(Node):
     def get_instance(path, decode=False):
         ''' Create folder meta-data by reading it from disk '''
         if decode:
-            path = unquote_plus(path)
-        disk_path = unicode(CONFIG['USER_HOME_PATH'] + path)
+            path = unicode(unquote_plus(path.encode('utf-8')),'utf-8')
+        disk_path = CONFIG['USER_HOME_PATH'] + path
         if os.path.exists(disk_path) == True:
-            parent_path = os.path.dirname(disk_path).replace(
-                CONFIG['USER_HOME_PATH'], '')
-            parent = Node.get_instance(parent_path)
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(disk_path)).strftime(DATEFORMAT)
             values = {
                 'name':os.path.basename(disk_path),
                 'path':path,
                 'sys_path':disk_path,
-                'parent':parent,
                 'date_modified':date_modified,
                 'type':'FOLDER'
             }
         else:
-            error_msg = u"path doesn't exist"
+            error_msg = u"path doesn't exist: {path}".format(path=disk_path)
             LOG.error(error_msg)
             raise ValueError(error_msg)
         return Folder(values)
@@ -115,9 +107,10 @@ class Folder(Node):
     def scan_for_folders(self):
         ''' Scan for folders '''
         sub_folders = [o for o in os.listdir(
-            self.sys_path) if os.path.isdir(self.sys_path+'/'+o)]
+            self.sys_path) if (os.path.isdir(self.sys_path+'/'+o) and not
+            os.path.islink(self.sys_path+'/'+o))]
         for line in sub_folders:
-            path = '{folder}/{node}'.format(folder=self.path, node=line)
+            path = u'{folder}/{node}'.format(folder=self.path, node=line)
             node = Node.get_instance(path)
             self.__folders.append(node)
     
@@ -146,5 +139,6 @@ class Folder(Node):
         results = ShellCommand(cmd).run()
         folders = []
         for line in results[0]:
+            line = unicode(line, 'utf8')
             folders.append(Folder.get_instance(line))
         return folders

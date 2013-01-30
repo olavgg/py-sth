@@ -85,7 +85,7 @@ def build_all():
     data = dict(status='ok',
                 jobs=total,
                 description='{total} jobs created'.format(total=total))
-    return jsonify(data)
+    return jsonify(data), 200
 
 @PAGE.route("/es/create/<uid>/", methods=['GET', 'POST'])
 @disallow_special_characters
@@ -97,7 +97,38 @@ def create(uid):
         return jsonify(EsService().create_index(user.uid, overwrite=True))
     abort(404)
 
-@PAGE.route("/es/sync/folder/<uid>/<node_id>/", methods=['GET','POST'])
+@PAGE.route("/es/sync/all/", methods=['GET','POST'])
+@with_http_auth
+def sync_all():
+    '''
+    Sync the filesystem and ES DB by scanning and comparing datastructures
+    on both the filesystem and ES DB.
+    '''
+    total = UserDataService.sync_all_users()
+    data = dict(status='ok',
+                jobs=total,
+                description='{total} jobs created'.format(total=total))
+    return jsonify(data), 200
+
+@PAGE.route("/es/sync/<string:uid>/", methods=['GET','POST'])
+@with_http_auth
+def sync_uid(uid):
+    '''
+    Sync the filesystem and ES DB by scanning and comparing datastructures
+    on both the filesystem and ES DB.
+    '''
+    user = User.get(uid)
+    if user:
+        try:
+            TS(full_sync_process, user=user)
+        except ValueError, error:
+            LOG.error(error)
+            return jsonify(dict(error='job is already running')), 200
+        data = dict(status='job created')
+        return jsonify(data), 201
+    abort(404)
+
+@PAGE.route("/es/sync/<string:uid>/<string:node_id>", methods=['GET','POST'])
 @with_http_auth
 def sync_folder(uid, node_id):
     '''
@@ -114,28 +145,3 @@ def sync_folder(uid, node_id):
         data = dict(status='job created')
         return jsonify(data), 201
     abort(404)
-
-@PAGE.route("/es/fullsync/<uid>/", methods=['GET','POST'])
-@with_http_auth
-def fullsync(uid):
-    '''
-    Sync the filesystem and ES DB by scanning and comparing datastructures
-    on both the filesystem and ES DB.
-    '''
-    user = User.get(uid)
-    if user:
-        try:
-            TS(full_sync_process, user=user)
-        except ValueError, error:
-            LOG.error(error)
-            return jsonify(dict(error='job is already running')), 200
-        data = dict(status='job created')
-        return jsonify(data), 201
-    abort(404)
-
-@PAGE.route("/es/get/<idx_id>/<user>/", methods=['GET','POST'])
-@with_http_auth
-def get_folder(idx_id, user):
-    ''' Return folder contents '''
-    data = {}
-    return jsonify(data)

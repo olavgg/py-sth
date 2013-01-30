@@ -38,10 +38,7 @@ class File(Node):
     def __init__(self, values):
         ''' Constructor '''
         Node.__init__(self, values)
-        if isinstance(values['parent'], Node):
-            self.__parent = values['parent']
-        else:
-            self.__parent = None
+        self.__parent = Node.get_instance(self.get_parent())
         self.__size = values['size']
         
     @staticmethod
@@ -49,24 +46,20 @@ class File(Node):
         ''' Create file meta-data by reading it from disk '''
         if decode:
             path = unquote_plus(path)
-        disk_path = unicode(CONFIG['USER_HOME_PATH'] + path)
+        disk_path = CONFIG['USER_HOME_PATH'] + path
         LOG.debug(disk_path)
         if os.path.exists(disk_path) == True:
-            parent_path = os.path.dirname(disk_path).replace(
-                CONFIG['USER_HOME_PATH'], '')
-            parent = Node.get_instance(parent_path)
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(disk_path)).strftime(DATEFORMAT)
             values = {
                 'name': os.path.basename(disk_path),
-                'parent': parent,
                 'path': path,
                 'sys_path': disk_path,
                 'date_modified': date_modified,
                 'type':'FILE'
             }
         else:
-            error_msg = u"path doesn't exist"
+            error_msg = u"path doesn't exist: {path}".format(path=disk_path)
             LOG.error(error_msg)
             raise ValueError(error_msg)
         return File(values)

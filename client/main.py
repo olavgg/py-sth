@@ -26,6 +26,7 @@ Created on Dec 8, 2012
 '''
 import logging
 import os
+import sys
 
 from conf.base import Base
 from conf.boostrap import Bootstrap
@@ -55,7 +56,15 @@ class PYSTHClient(object):
         '''
         Start the application
         '''
-        base = Base.get_instance()
+        config_type='DevelopmentConfig'
+        if len(sys.argv) == 2:
+            if sys.argv[1] == "dev":
+                config_type='DevelopmentConfig'
+            elif sys.argv[1] == "test":
+                config_type='TestConfig'
+            elif sys.argv[1] == "prod":
+                config_type='ProductionConfig'
+        base = Base.get_instance(config_type)
         FORMAT = '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
         logging.basicConfig(
             filename=base.app.config["LOGFILE"],

@@ -93,7 +93,7 @@ class UserDataService(object):
         self.__syspath = value
     
     def find_all_folders(self, folder=None):
-        ''' Find all folders for user '''
+        ''' Find all folders for user, do not return symlinks '''
         if folder == None:
             cmd = u'find {path} -type d | sed "s/\{syspath}//"'.format(
                 path = self.path,
@@ -111,6 +111,8 @@ class UserDataService(object):
         folders = []
         for line in results[0]:
             line = unicode(line, 'utf8')
+            if os.path.islink(self.syspath+line):
+                continue
             splitted_path = line.split('/')
             folder = splitted_path[len(splitted_path)-1]
             parent_folder = line[:-(len(folder)+1)]
@@ -122,7 +124,7 @@ class UserDataService(object):
         return folders
     
     def find_folder_folders(self, folder):
-        ''' Find all files for given folder '''
+        ''' Find all folders for given folder, but do not return symlinks '''
         cmd = u'find "{path}" -maxdepth 1 -type d | sed "s#.*/##"'.format(
             path = folder.sys_path
         )
@@ -130,6 +132,8 @@ class UserDataService(object):
         folders = []
         for line in results[0]:
             line = unicode(line, 'utf8')
+            if os.path.islink(self.syspath+line):
+                continue
             path = u'{folder}/{file}'.format(folder=folder.path, file=line)
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(folder.sys_path)).strftime(DATEFORMAT)
@@ -140,35 +144,10 @@ class UserDataService(object):
             folders.append(data)
         return folders
     
-    def find_folder_files(self, folder):
-        ''' Find all files for given folder '''
-        cmd = u'find "{path}" -maxdepth 1 -type f | sed "s#.*/##"'.format(
-            path = self.syspath + folder['path']
-        )
-        results = ShellCommand(cmd).run()
-        files = []
-        if folder['path'] == "/olavgg/truls/Dokumenter/faenza-sources_1.2/__radiance/status/22":
-            LOG.debug(cmd)
-        for line in results[0]:
-            line = unicode(line, 'utf8')
-            path = u'{folder}/{file}'.format(folder=folder['path'], file=line)
-            fullpath = unicode(self.syspath+path)
-
-            size = Node.sizeof_fmt(os.path.getsize(fullpath))
-            date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(fullpath)).strftime(DATEFORMAT)
-            data = {
-                'name':line,'folder':folder['path'],'path':path,
-                'size':size, 'date_modified':date_modified
-            }
-            files.append(data)
-        return files
-    
     def index_folders_and_files(self, folder=None):
         '''
-        Uses the FolderService to find all folders for the user. Path to
-        the folder is urlencoded and assigned as a id for the Folder type
-        in the ElasticSearch index.
+        Find all folders for the user. Path to the folder is urlencoded and
+        assigned as a id for the Folder type in the ElasticSearch index.
         '''
         items_indexed = 0
         folders = self.find_all_folders(folder)
@@ -181,7 +160,7 @@ class UserDataService(object):
                 'name':folder['name'],
                 'parent':parent,
                 'date_modified':folder['date_modified'],
-                'type':'folder',
+                'type':Node.FOLDER_TYPE,
                 'size':''
             }
             folder_bulk.append(data)
@@ -192,18 +171,17 @@ class UserDataService(object):
     
     def index_files(self, folder):
         ''' Index the files in folder '''
-        folder_files = self.find_folder_files(folder)
+        folder_instance = Folder.get_instance(folder['path'])
+        folder_files = folder_instance.files
         file_bulk = []
         for file_obj in folder_files:
-            file_index_id = uenc(file_obj['path'].encode('utf-8'))
-            folder_index_id = uenc(file_obj['folder'].encode('utf-8'))
-            file_bulk.append({'index' : {'_id':file_index_id}})
+            file_bulk.append({'index' : {'_id':file_obj.index_id}})
             fdata = {
-                'name':file_obj['name'],
-                'parent':folder_index_id,
-                'date_modified':file_obj['date_modified'],
-                'size':file_obj['size'],
-                'type':'file'
+                'name':file_obj.name,
+                'parent':folder_instance.index_id,
+                'date_modified':file_obj.date_modified,
+                'size':file_obj.get_size(),
+                'type':file_obj.type
             }
             file_bulk.append(fdata)
         if len(file_bulk) > 0:
@@ -328,8 +306,10 @@ class UserDataService(object):
             "term" : { "parent" : document_id }
         })
         if result['status'] != 200:
-            LOG.error(u'Couldn\'t delete documents by parent: {doc} from ES'
-                      .format(doc=document_id))
+            error_msg = (
+                u'Couldn\'t delete documents by parent: {doc}').format(
+                    doc=document_id)
+            LOG.error(error_msg)
         return ids_to_delete
         
     def delete_document_by_id(self, document_id):
@@ -339,35 +319,38 @@ class UserDataService(object):
             id=uenc(document_id)) # dual url encoding as ES decodes it
         result = self.es_service.conn.delete(del_url)
         if result['status'] != 200:
-            LOG.error(u'Couldn\'t delete document: {doc} from ES'.format(
+            error_msg = u'Couldn\'t delete document: {doc} from ES'.format(
                 doc=del_url
-            ))
-            return ''
+            )
+            LOG.error(error_msg)
         else:
             return document_id
             
     def index_document_by_node(self, node):
         ''' Index a node by supplying a node argument '''
         if isinstance(node, Node):
-            if node.type == 'FILE':
+            if node.type == Node.FILE_TYPE:
                 size = node.get_size()
             else:
                 size = ''
             put_url = '{idx_name}/node/{id}'.format(
                 idx_name=self.user.uid,
                 id=uenc(uenc(node.path))) # dual url encoding as ES decodes it
-            result = self.es_service.conn.put(put_url, data={
+            data={
                 'name':node.name,
                 'parent':uenc(node.get_parent()),
                 'date_modified':node.date_modified,
                 'size':size,
                 'type':node.type
-            })
+            }
+            result = self.es_service.conn.put(put_url, data=data)
             if result['status'] != 201:
-                LOG.error(u'Couldn\'t index document: {doc} to ES'.format(
+                error_msg = u'Couldn\'t index document: {doc} to ES'.format(
                     doc=node.path
-                ))
-            LOG.debug(u'Indexed {name}'.format(name=node.name))
+                )
+                LOG.error(error_msg)
+            else:
+                LOG.debug(u'Indexed {name}'.format(name=node.name))
         else:
             raise TypeError(u'node is not of type domain.node.Node')
     
@@ -376,15 +359,33 @@ class UserDataService(object):
         Pass a folder_id, read it from disk and the ES index. Compare its
         content and files and return the correct results based what is stored
         on disk.
+        
+        We do two queries, first to find total hits and then use total hits
+        to do the second query. The reason for this is that a huge size value
+        decrease Elasticsearch query performance by a huge margin.
         '''
         folder = Folder.get_instance(node_id, decode=True)
         if folder:
-            index_id = uenc(folder.path)
+            index_id = uenc(folder.path.encode('utf-8'))
             search_url = u'{idx_name}/node/_search'.format(
                 idx_name=self.user.uid)
+            max_size = int(self.es_service.conn.get(search_url,data={
+                "from": 0,
+                "size": 0,
+                "fields": [],
+                "query": {
+                    "bool": {
+                        "must": [{
+                            "term": {
+                                "parent": index_id
+                            }
+                        }]
+                    }
+                }
+            })['hits']['total'])
             results = self.es_service.conn.get(search_url,data={
                 "from": 0,
-                "size": 999999999,
+                "size": max_size,
                 "fields": [],
                 "query": {
                     "bool": {
@@ -433,7 +434,7 @@ class UserDataService(object):
                            if d_id['exists'] == True ]
             for folder in disk_folders:
                 if folder.index_id in es_results:
-                    LOG.debug('Syncing folder: {f}'.format(f=folder.sys_path))
+                    LOG.debug(u'Syncing folder: {f}'.format(f=folder.sys_path))
                     self.do_folder_sync(folder.index_id)
                 else:
                     LOG.debug('Created folder: {f}'.format(f=folder.sys_path))
@@ -442,15 +443,29 @@ class UserDataService(object):
             LOG.error(u'Couldn\'t fetch documents. Full sync stopped.')
             return
         search_url = '{idx_name}/_search'.format(idx_name=self.user.uid)
-        es_docs = self.es_service.conn.get(search_url, data={
+        max_size = int(self.es_service.conn.get(search_url,data={
             "from": 0,
-            "size": 999999999,
+            "size": 0,
             "fields": [],
             "query": {
                 "bool": {
                     "must": [{
                         "term": {
-                            "type": "folder"
+                            "type": Node.FOLDER_TYPE
+                        }
+                    }]
+                }
+            }
+        })['hits']['total'])
+        es_docs = self.es_service.conn.get(search_url, data={
+            "from": 0,
+            "size": max_size,
+            "fields": [],
+            "query": {
+                "bool": {
+                    "must": [{
+                        "term": {
+                            "type": Node.FOLDER_TYPE
                         }
                     }]
                 }
@@ -477,6 +492,17 @@ class UserDataService(object):
         for user in users:
             try:
                 TaskService(build_process, user=user)
+            except ValueError, error:
+                LOG.error(error)
+        return len(users)
+    
+    @staticmethod
+    def sync_all_users():
+        ''' Static method for syncing all folders and files for all users '''
+        users = User.get_users()
+        for user in users:
+            try:
+                TaskService(full_sync_process, user=user)
             except ValueError, error:
                 LOG.error(error)
         return len(users)
