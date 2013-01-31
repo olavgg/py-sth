@@ -24,7 +24,7 @@ Created on Dec 11, 2012
 @Author: Olav Groenaas Gjerde
 '''
 from subprocess import Popen, PIPE
-from conf import LOG
+from flask import current_app as app
 
 class ShellCommand(object):
     ''' 
@@ -57,8 +57,8 @@ class ShellCommand(object):
         if output.returncode != 0:
             errormsg = (
                 u"Couldn't execute command: %s"%(self.cmd))
-            LOG.exception(errormsg)
-            LOG.exception(error)
+            app.logger.exception(errormsg)
+            app.logger.exception(error)
             lines = False
         if lines != False:
             length = len(lines)

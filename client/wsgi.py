@@ -29,12 +29,21 @@ DO NOT USE THIS!!!!
 
 import os
 import logging
+from Crypto.Util.number import getRandomInteger
+from datetime import timedelta
+
+from werkzeug.contrib.fixers import ProxyFix
+from flask import Flask
+from flask import jsonify
 
 from conf.base import Base
+from conf.boostrap import Bootstrap
 
-BASE = Base.get_instance()
-#BASE = Base.get_instance(config_type='ProductionConfig')
-APP = BASE.app
+CONFIG_TYPE='ProductionConfig'
+APP = Flask(__name__)
+APP.config.from_object('conf.config.%s'%(CONFIG_TYPE))
+APP.secret_key = getRandomInteger(128)
+APP.permanent_session_lifetime = timedelta(seconds=10)
 #Imports all controllers and register pages
 CONTROLLERS = []
 for controller in os.listdir(os.getcwd()+"/controllers"):
@@ -47,7 +56,54 @@ for controller in CONTROLLERS:
     
 logging.basicConfig(
     filename=APP.config["LOGFILE"],
-    level=logging.ERROR,
+    level=logging.INFO,
     format='%(asctime)s %(levelname)s: %(message)s '
             '[in %(pathname)s:%(lineno)d]'
 )
+@APP.errorhandler(400)
+def bad_request(exception):
+    '''Bad Request'''
+    data = dict(
+        status = exception.code, 
+        error = str(exception),
+        description = bad_request.__doc__
+    )
+    return jsonify(data), 400
+
+@APP.errorhandler(404)
+def page_not_found(exception):
+    '''Page Not Found'''
+    data = dict(
+        status = exception.code, 
+        error = str(exception),
+        description = page_not_found.__doc__
+    )
+    return jsonify(data), 404
+
+if APP.config['DEBUG'] == True:
+    @APP.errorhandler(500)
+    def error(exception):
+        '''Internal Server Error'''
+        data = dict(
+            status = exception.code, 
+            error = str(exception),
+            description = error.__doc__
+        )
+        return jsonify(data), 500
+
+@APP.errorhandler(403)
+def forbidden(exception):
+    '''Forbidden'''
+    data = dict(
+        status = exception.code, 
+        error = str(exception),
+        description = forbidden.__doc__
+    )
+    return jsonify(data), 403
+
+@APP.before_first_request
+def bootstrap():
+    Bootstrap()
+with APP.app_context():
+    Base.do_first_request()
+APP.wsgi_app = ProxyFix(APP.wsgi_app)

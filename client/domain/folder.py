@@ -27,9 +27,8 @@ import os
 from urllib import unquote_plus
 import datetime
 
-from conf import LOG
-from conf import CONFIG
-from conf import DATEFORMAT
+from flask import current_app as app
+
 from domain.node import Node
 from services.shell_command import ShellCommand
 
@@ -48,10 +47,10 @@ class Folder(Node):
         ''' Create folder meta-data by reading it from disk '''
         if decode:
             path = unicode(unquote_plus(path.encode('utf-8')),'utf-8')
-        disk_path = CONFIG['USER_HOME_PATH'] + path
+        disk_path = app.config['USER_HOME_PATH'] + path
         if os.path.exists(disk_path) == True:
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(disk_path)).strftime(DATEFORMAT)
+                os.path.getmtime(disk_path)).strftime(app.config['DATEFORMAT'])
             values = {
                 'name':os.path.basename(disk_path),
                 'path':path,
@@ -61,7 +60,7 @@ class Folder(Node):
             }
         else:
             error_msg = u"path doesn't exist: {path}".format(path=disk_path)
-            LOG.error(error_msg)
+            app.logger.error(error_msg)
             raise ValueError(error_msg)
         return Folder(values)
     
@@ -129,7 +128,7 @@ class Folder(Node):
         ''' Find all folders for user '''
         if folder == None:
             cmd = (u'find {path}/{uid} -type d | sed "s/\{path}//"').format(
-                path = CONFIG['USER_HOME_PATH'],
+                path = app.config['USER_HOME_PATH'],
                 uid = user.uid,
             )
         else:

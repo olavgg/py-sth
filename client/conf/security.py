@@ -27,8 +27,8 @@ Created on Dec 11, 2012
 from functools import wraps
 from flask import request
 from flask import abort
+from flask import current_app as app
 
-from conf.base import Base
 import re
 
 NSC = r'[^a-zA-Z0-9]' #NO_SPECIAL_CHAR
@@ -41,8 +41,7 @@ def with_http_auth(func):
         Check if the token exists in http headers or within the post or get
         http methods. Validate them
         '''
-        base = Base.get_instance()
-        auth_token = base.app.config["AUTH_TOKEN"]
+        auth_token = app.config["AUTH_TOKEN"]
         # Check HTTP Header
         if (request.headers.has_key("Authtoken") == True and
             request.headers.get("Authtoken") == auth_token):

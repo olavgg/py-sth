@@ -27,6 +27,8 @@ import os
 import datetime
 from urllib import quote_plus as uenc
 
+from flask import current_app as app
+
 from domain.user import User
 from domain.node import Node
 from domain.folder import Folder
@@ -34,18 +36,13 @@ from services.shell_command import ShellCommand
 from services.es_service import EsService
 from services.task_service import TaskService
 
-from conf.base import Base
-from conf import LOG
-from conf import DATEFORMAT
-
 class UserDataService(object):
     ''' Find and index data for a user '''
     
     def __init__(self, user):
         '''Constructor'''
         if isinstance(user, User) and isinstance(user.uid, str):
-            base = Base.get_instance()
-            self.__syspath = base.app.config['USER_HOME_PATH']
+            self.__syspath = app.config['USER_HOME_PATH']
             self.__path = u"{path}/{uid}".format(
                 path=self.__syspath,
                 uid=user.uid
@@ -117,7 +114,8 @@ class UserDataService(object):
             folder = splitted_path[len(splitted_path)-1]
             parent_folder = line[:-(len(folder)+1)]
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(self.syspath+line)).strftime(DATEFORMAT)
+                os.path.getmtime(self.syspath+line)).strftime(
+                    app.config['DATEFORMAT'])
             data = {'name':folder, 'parent':parent_folder,
                 'path':line,'date_modified':date_modified}
             folders.append(data)
@@ -136,7 +134,8 @@ class UserDataService(object):
                 continue
             path = u'{folder}/{file}'.format(folder=folder.path, file=line)
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(folder.sys_path)).strftime(DATEFORMAT)
+                os.path.getmtime(folder.sys_path)).strftime(
+                    app.config['DATEFORMAT'])
             data = {
                 'name':line,'parent':folder.path,'path':path,
                 'date_modified':date_modified
@@ -196,19 +195,19 @@ class UserDataService(object):
         Add files to index
         Flush index when done
         '''
-        LOG.debug(u'Start building index for {uid}'.format(uid=self.user.uid))
+        app.logger.debug(u'Start building index for {uid}'.format(uid=self.user.uid))
         result = self.es_service.create_index(
             self.user.uid, data=self.get_index_metadata(), overwrite=True)
         if result['status'] != 200:
-            LOG.error(str(result))
-            LOG.error(u'An error occured while creating the index')
+            app.logger.error(str(result))
+            app.logger.error(u'An error occured while creating the index')
             return False
         items_indexed = self.index_folders_and_files()
         result = self.es_service.conn.post(
             '{idx_name}/_flush'.format(idx_name=self.user.uid))
         if result['status'] != 200:
-            LOG.error(str(result))
-            LOG.error(u'An error occured when executing an index flush')
+            app.logger.error(str(result))
+            app.logger.error(u'An error occured when executing an index flush')
             return False
         msg = u'Indexed {total} items for user {uid}.'.format(
             total=items_indexed,
@@ -224,7 +223,7 @@ class UserDataService(object):
                 "refresh_interval" : "1s"
             }
         })
-        LOG.debug(msg)
+        app.logger.info(msg)
     
     def get_index_metadata(self):
         ''' 
@@ -309,7 +308,7 @@ class UserDataService(object):
             error_msg = (
                 u'Couldn\'t delete documents by parent: {doc}').format(
                     doc=document_id)
-            LOG.error(error_msg)
+            app.logger.error(error_msg)
         return ids_to_delete
         
     def delete_document_by_id(self, document_id):
@@ -322,7 +321,7 @@ class UserDataService(object):
             error_msg = u'Couldn\'t delete document: {doc} from ES'.format(
                 doc=del_url
             )
-            LOG.error(error_msg)
+            app.logger.error(error_msg)
         else:
             return document_id
             
@@ -348,9 +347,9 @@ class UserDataService(object):
                 error_msg = u'Couldn\'t index document: {doc} to ES'.format(
                     doc=node.path
                 )
-                LOG.error(error_msg)
+                app.logger.error(error_msg)
             else:
-                LOG.debug(u'Indexed {name}'.format(name=node.name))
+                app.logger.debug(u'Indexed {name}'.format(name=node.name))
         else:
             raise TypeError(u'node is not of type domain.node.Node')
     
@@ -408,7 +407,7 @@ class UserDataService(object):
             for new_document in new_docs:
                 self.index_document_by_node(disk_nodes[new_document])
         else:
-            LOG.error('No folder found by passing node id: {node_id}'.format(
+            app.logger.error('No folder found by passing node id: {node_id}'.format(
                 node_id=node_id
             ))
             
@@ -434,13 +433,13 @@ class UserDataService(object):
                            if d_id['exists'] == True ]
             for folder in disk_folders:
                 if folder.index_id in es_results:
-                    LOG.debug(u'Syncing folder: {f}'.format(f=folder.sys_path))
+                    app.logger.debug(u'Syncing folder: {f}'.format(f=folder.sys_path))
                     self.do_folder_sync(folder.index_id)
                 else:
-                    LOG.debug('Created folder: {f}'.format(f=folder.sys_path))
+                    app.logger.debug('Created folder: {f}'.format(f=folder.sys_path))
                     self.index_folders_and_files(folder=folder)
         else:
-            LOG.error(u'Couldn\'t fetch documents. Full sync stopped.')
+            app.logger.error(u'Couldn\'t fetch documents. Full sync stopped.')
             return
         search_url = '{idx_name}/_search'.format(idx_name=self.user.uid)
         max_size = int(self.es_service.conn.get(search_url,data={
@@ -482,7 +481,7 @@ class UserDataService(object):
             if doc_to_delete not in deleted_ids:
                 deleted_ids.append(
                     self.delete_document_by_id(doc_to_delete))
-        LOG.debug(u'Deleted nodes with id like:\n {name}'
+        app.logger.debug(u'Deleted nodes with id like:\n {name}'
                   .format(name=deleted_ids))
     
     @staticmethod
@@ -493,7 +492,7 @@ class UserDataService(object):
             try:
                 TaskService(build_process, user=user)
             except ValueError, error:
-                LOG.error(error)
+                app.logger.error(error)
         return len(users)
     
     @staticmethod
@@ -504,7 +503,7 @@ class UserDataService(object):
             try:
                 TaskService(full_sync_process, user=user)
             except ValueError, error:
-                LOG.error(error)
+                app.logger.error(error)
         return len(users)
 
 def build_process(values):
@@ -513,6 +512,7 @@ def build_process(values):
     if user:
         service = UserDataService(user)
         service.build_index()
+        app.logger.info('Index built for user: {uid}.'.format(uid=user.uid))
         
 def full_sync_process(values):
     ''' Task/process function '''
@@ -520,7 +520,7 @@ def full_sync_process(values):
     if user:
         service = UserDataService(user)
         service.do_full_sync()
-        LOG.debug('Full sync for {uid} done.'.format(uid=user.uid))
+        app.logger.info('Full sync for {uid} done.'.format(uid=user.uid))
         
 def folder_sync_process(values):
     ''' Task/process function '''
@@ -529,4 +529,4 @@ def folder_sync_process(values):
     if user and node_id:
         service = UserDataService(user)
         service.do_folder_sync(node_id)
-        LOG.debug('Folder sync for {uid} done.'.format(uid=user.uid))
+        app.logger.info('Folder sync for {uid} done.'.format(uid=user.uid))

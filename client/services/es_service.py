@@ -28,7 +28,7 @@ from external_projects import rawes
 from requests import ConnectionError
 import json
 
-from conf import LOG
+from flask import current_app as app
 
 class EsService(object):
     ''' Handles connecting to a ElasticSearch cluster and data manipulation '''
@@ -50,7 +50,7 @@ class EsService(object):
                 if self.conn == None:
                     raise ConnectionError("Couldn't connect to %s"%(es_server))
         except ConnectionError as err:
-            LOG.exception(str(err))
+            app.logger.exception(str(err))
         EsService.current_connection = self
         
     @staticmethod
@@ -73,7 +73,7 @@ class EsService(object):
                 self.conn.delete(name)
         result = self.conn.put(name, data=data)
         if result['status'] != 200:
-            LOG.error("Couldn't create index")
+            app.logger.error("Couldn't create index")
         return result
     
     def bulk_insert(self, path, data, bulk_size=8000):
@@ -97,7 +97,7 @@ class EsService(object):
         bdata = '\n'.join([json.dumps(bdat) for bdat in databulk])+'\n'
         result = self.conn.post(path, data=bdata)
         if result['status'] != 200:
-            LOG.error(str(result))
-            LOG.error(bdata)
-            LOG.error("Couldn't do bulk insert")
+            app.logger.error(str(result))
+            app.logger.error(bdata)
+            app.logger.error("Couldn't do bulk insert")
             

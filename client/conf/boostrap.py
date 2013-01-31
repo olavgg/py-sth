@@ -23,10 +23,10 @@ Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
-from conf import LOG
-from conf import CONFIG
+
 from domain.user import User
 from services.user_data_service import UserDataService
+from flask import current_app as app
 
 class Bootstrap(object):
     '''
@@ -39,12 +39,14 @@ class Bootstrap(object):
         Constructor, based on the environment settings,
         run the method for data initialization.
         '''
-        LOG.info('Bootstrap starting...')
-        if CONFIG['DEBUG'] == True:
+        app.logger.info('Bootstrap starting...')
+        if app.config['DEBUG'] == True:
             Bootstrap.init_dev_data()
-        elif CONFIG['TESTING'] == True:
+        elif app.config['TESTING'] == True:
             Bootstrap.init_test_data()
-        LOG.info('Bootstrap complete...')
+        else:
+            Bootstrap.init_prod_data()
+        app.logger.info('Bootstrap complete...')
         
     @staticmethod
     def init_dev_data():
@@ -63,4 +65,6 @@ class Bootstrap(object):
     @staticmethod
     def init_prod_data():
         ''' Init prod data '''
+        User('olavgg')
+        User('testolav')
         pass

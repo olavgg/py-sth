@@ -59,6 +59,7 @@ class ProductionConfig(Config):
     '''
 
     LOGFILE = 'production.log'
+    PORT = 8000
     
     @staticmethod
     def set_app_password(password):

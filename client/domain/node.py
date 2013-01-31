@@ -30,9 +30,7 @@ from urllib import unquote_plus
 from urllib import quote_plus
 import datetime
 
-from conf import CONFIG
-from conf import LOG
-from conf import DATEFORMAT
+from flask import current_app as app
 
 class Node(object):
     ''' Simple representation of a file/folder object '''
@@ -55,14 +53,14 @@ class Node(object):
         ''' Create node meta-data by reading it from disk '''
         if decode:
             path = unquote_plus(path)
-        disk_path = CONFIG['USER_HOME_PATH'] + path
+        disk_path = app.config['USER_HOME_PATH'] + path
         if os.path.exists(disk_path) == True:
             if os.path.isfile(disk_path):
                 node_type=Node.FILE_TYPE
             elif os.path.isdir(disk_path):
                 node_type=Node.FOLDER_TYPE
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(disk_path)).strftime(DATEFORMAT)
+                os.path.getmtime(disk_path)).strftime(app.config['DATEFORMAT'])
             values = {
                 'name':os.path.basename(disk_path),
                 'path':path,
@@ -72,7 +70,7 @@ class Node(object):
             }
         else:
             error_msg = u"path doesn't exist: {path}".format(path=disk_path)
-            LOG.error(error_msg)
+            app.logger.error(error_msg)
             raise ValueError(error_msg)
         return Node(values)
         
@@ -166,9 +164,9 @@ class Node(object):
                 os.stat(path)
             except os.error, err:
                 if err.errno == errno.ENOENT:
-                    LOG.error('broken link')
+                    app.logger.error('broken link')
                 elif err.errno == errno.ELOOP:
-                    LOG.error('circular link')
-                LOG.error(err)
+                    app.logger.error('circular link')
+                app.logger.error(err)
                 return True
         return False

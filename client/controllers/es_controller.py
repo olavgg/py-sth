@@ -28,7 +28,7 @@ from flask import Blueprint
 from flask import jsonify
 from flask import abort
 
-from conf import LOG
+from flask import current_app as app
 from conf.security import with_http_auth
 from conf.security import disallow_special_characters
 from services.user_data_service import UserDataService
@@ -70,7 +70,7 @@ def build(uid):
         try:
             TS(build_process, user=user)
         except ValueError, error:
-            LOG.error(error)
+            app.logger.error(error)
             return jsonify(dict(error='job is already running')), 200
         data = dict(status='job created')
         return jsonify(data), 201
@@ -122,7 +122,7 @@ def sync_uid(uid):
         try:
             TS(full_sync_process, user=user)
         except ValueError, error:
-            LOG.error(error)
+            app.logger.error(error)
             return jsonify(dict(error='job is already running')), 200
         data = dict(status='job created')
         return jsonify(data), 201
@@ -140,7 +140,7 @@ def sync_folder(uid, node_id):
         try:
             TS(folder_sync_process, user=user, node_id=node_id)
         except ValueError, error:
-            LOG.error(error)
+            app.logger.error(error)
             return jsonify(dict(error='job is already running')), 200
         data = dict(status='job created')
         return jsonify(data), 201

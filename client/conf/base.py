@@ -23,93 +23,15 @@ Created on Dec 8, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
-from Crypto.Util.number import getRandomInteger
-from datetime import timedelta
-from flask import Flask
-from flask import jsonify
+
+from flask import current_app as app
+
 from services.task_service import TaskService
 
 class Base(object):
     '''
     Base application functionality
     '''
-    __base = None
-    
-    def __init__(self):
-        self.app = None
-            
-    @staticmethod
-    def get_instance(config_type='DevelopmentConfig'):
-        '''
-        Get current static Base instance, create a new if it doesn't exist
-        '''
-        if Base.__base == None:
-            app = Flask(__name__)
-            base = Base()
-            base.app = app
-            base.app.config.from_object('conf.config.%s'%(config_type))
-            base.app.secret_key = getRandomInteger(128)
-            base.app.permanent_session_lifetime = timedelta(seconds=10)
-            Base.__base = base
-            
-            @app.errorhandler(400)
-            def bad_request(exception):
-                '''Bad Request'''
-                data = dict(
-                    status = exception.code, 
-                    error = str(exception),
-                    description = bad_request.__doc__
-                )
-                return jsonify(data), 400
-            
-            @app.errorhandler(404)
-            def page_not_found(exception):
-                '''Page Not Found'''
-                data = dict(
-                    status = exception.code, 
-                    error = str(exception),
-                    description = page_not_found.__doc__
-                )
-                return jsonify(data), 404
-            
-            if app.config['DEBUG'] == True:
-                @app.errorhandler(500)
-                def error(exception):
-                    '''Internal Server Error'''
-                    data = dict(
-                        status = exception.code, 
-                        error = str(exception),
-                        description = error.__doc__
-                    )
-                    return jsonify(data), 500
-            
-            @app.errorhandler(403)
-            def forbidden(exception):
-                '''Forbidden'''
-                data = dict(
-                    status = exception.code, 
-                    error = str(exception),
-                    description = forbidden.__doc__
-                )
-                return jsonify(data), 403
-        return Base.__base
-    
-    @staticmethod
-    def get_new_instance():
-        '''Create a new Base instance '''
-        return Base().get_instance()
-    
-    def get_config(self):
-        ''' Get current configuration instance '''
-        if self.__base == None:
-            return None
-        return self.__base.app.config
-        
-    def get_logger(self):
-        ''' Get current logger instance '''
-        if self.__base == None:
-            return None
-        return self.__base.app.logger
     
     @staticmethod
     def do_first_request():
@@ -121,7 +43,7 @@ class Base(object):
         try:
             TaskService(first_request_process, wait=True, sleep=1)
         except ValueError, err:
-            Base.get_instance().get_logger().error(err)
+            app.logger.error(err)
 
 def first_request_process(values):
     ''' First request Process to initialize data '''
@@ -130,8 +52,10 @@ def first_request_process(values):
     while True:
         time.sleep(values['sleep'])
         try:
-            res = urllib.urlopen('http://localhost:18080')
+            url = 'http://localhost:{port}'.format(
+                port=app.config['PORT'])
+            res = urllib.urlopen(url)
             if res.getcode() == 200:
                 break
         except IOError, err:
-            Base.get_instance().get_logger().error(err)
+            app.logger.error(err)

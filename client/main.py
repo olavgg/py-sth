@@ -27,9 +27,14 @@ Created on Dec 8, 2012
 import logging
 import os
 import sys
+from Crypto.Util.number import getRandomInteger
+from datetime import timedelta
+from flask import jsonify
 
-from conf.base import Base
+from flask import Flask
+
 from conf.boostrap import Bootstrap
+from conf.base import Base
         
 class PYSTHClient(object):
     '''
@@ -38,7 +43,7 @@ class PYSTHClient(object):
     controllers = []
     
     @staticmethod
-    def init_controllers(base):
+    def init_controllers(app):
         '''
         Imports all controllers and register pages
         '''
@@ -49,7 +54,7 @@ class PYSTHClient(object):
                 PYSTHClient.controllers.append(
                    module.__getattribute__(module_name))
         for controller in PYSTHClient.controllers:
-            base.app.register_blueprint(controller.PAGE)
+            app.register_blueprint(controller.PAGE)
                 
     @staticmethod
     def start():
@@ -64,19 +69,65 @@ class PYSTHClient(object):
                 config_type='TestConfig'
             elif sys.argv[1] == "prod":
                 config_type='ProductionConfig'
-        base = Base.get_instance(config_type)
+        app = Flask(__name__)
+        app.config.from_object('conf.config.%s'%(config_type))
+        app.secret_key = getRandomInteger(128)
+        app.permanent_session_lifetime = timedelta(seconds=10)
         FORMAT = '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
         logging.basicConfig(
-            filename=base.app.config["LOGFILE"],
+            filename=app.config["LOGFILE"],
             level=logging.DEBUG,
             format=FORMAT
         )
-        PYSTHClient.init_controllers(base)
-        @base.app.before_first_request
+        PYSTHClient.init_controllers(app)
+        
+        @app.errorhandler(400)
+        def bad_request(exception):
+            '''Bad Request'''
+            data = dict(
+                status = exception.code, 
+                error = str(exception),
+                description = bad_request.__doc__
+            )
+            return jsonify(data), 400
+        
+        @app.errorhandler(404)
+        def page_not_found(exception):
+            '''Page Not Found'''
+            data = dict(
+                status = exception.code, 
+                error = str(exception),
+                description = page_not_found.__doc__
+            )
+            return jsonify(data), 404
+        
+        if app.config['DEBUG'] == True:
+            @app.errorhandler(500)
+            def error(exception):
+                '''Internal Server Error'''
+                data = dict(
+                    status = exception.code, 
+                    error = str(exception),
+                    description = error.__doc__
+                )
+                return jsonify(data), 500
+        
+        @app.errorhandler(403)
+        def forbidden(exception):
+            '''Forbidden'''
+            data = dict(
+                status = exception.code, 
+                error = str(exception),
+                description = forbidden.__doc__
+            )
+            return jsonify(data), 403
+            
+        @app.before_first_request
         def bootstrap():
             Bootstrap()
-        Base.do_first_request()
-        base.app.run(base.app.config["HOST"], base.app.config["PORT"])
+        with app.app_context():
+            Base.do_first_request()
+        app.run(app.config["HOST"], app.config["PORT"])
     
 if __name__ == '__main__':
     PYSTHClient.start()
