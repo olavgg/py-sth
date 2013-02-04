@@ -67,4 +67,5 @@ class Bootstrap(object):
         ''' Init prod data '''
         User('olavgg')
         User('testolav')
-        pass
+        UserDataService.index_all_users()
+        

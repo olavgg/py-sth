@@ -31,6 +31,7 @@ import os
 import logging
 from Crypto.Util.number import getRandomInteger
 from datetime import timedelta
+from apscheduler.scheduler import Scheduler
 
 from werkzeug.contrib.fixers import ProxyFix
 from flask import Flask
@@ -38,6 +39,7 @@ from flask import jsonify
 
 from conf.base import Base
 from conf.boostrap import Bootstrap
+from services.user_data_service import UserDataService
 
 CONFIG_TYPE='ProductionConfig'
 APP = Flask(__name__)
@@ -60,6 +62,13 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s: %(message)s '
             '[in %(pathname)s:%(lineno)d]'
 )
+sched = Scheduler()
+@sched.interval_schedule(seconds=60)
+def index_all_users_job():
+    with APP.app_context():
+        UserDataService.index_all_users()
+sched.start()
+    
 @APP.errorhandler(400)
 def bad_request(exception):
     '''Bad Request'''
@@ -107,3 +116,4 @@ def bootstrap():
 with APP.app_context():
     Base.do_first_request()
 APP.wsgi_app = ProxyFix(APP.wsgi_app)
+

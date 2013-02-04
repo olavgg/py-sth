@@ -55,9 +55,8 @@ class TaskService(object):
         self.values = values
         TaskService.tasks[self.name] = self
         TaskService.work_queue.put(self.name)
-        #from flask import current_app as app
-        #max_p = app.config['MAX_PROCESSES']
-        max_p = 4
+        from flask import current_app as app
+        max_p = app.config['MAX_PROCESSES']
         if len([1 for v in active_children() if isinstance(v,Worker)]) < max_p:
             worker = Worker(TaskService.work_queue, wait=values['wait'])
             worker.start()
