@@ -52,7 +52,8 @@ def first_request_process(values):
     while True:
         time.sleep(values['sleep'])
         try:
-            url = 'http://{url}:{port}'.format(
+            url = '{protocol}://{url}:{port}'.format(
+                protocol=app.config['PROTOCOL'],
                 url=app.config['HOST'],
                 port=app.config['PORT'])
             res = urllib.urlopen(url)

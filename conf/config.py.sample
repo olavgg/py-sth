@@ -33,6 +33,7 @@ class Config(object):
     TESTING = False
     HOST = u"0.0.0.0"
     PORT = 18080
+    PROTOCOL = u'http'
     LOGFILE = u'debug.log'
     AUTH_TOKEN = u'test123456'
     USER_HOME_PATH = u'/home'
@@ -60,7 +61,8 @@ class ProductionConfig(Config):
     '''
 
     LOGFILE = 'production.log'
-    PORT = 8000
+    PORT = 443
+    PROTOCOL = u'https'
     
     @staticmethod
     def set_app_password(password):
