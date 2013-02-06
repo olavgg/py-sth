@@ -52,7 +52,8 @@ def first_request_process(values):
     while True:
         time.sleep(values['sleep'])
         try:
-            url = 'http://localhost:{port}'.format(
+            url = 'http://{url}:{port}'.format(
+                url=app.config['HOST'],
                 port=app.config['PORT'])
             res = urllib.urlopen(url)
             if res.getcode() == 200:
