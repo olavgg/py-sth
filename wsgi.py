@@ -63,10 +63,10 @@ logging.basicConfig(
             '[in %(pathname)s:%(lineno)d]'
 )
 sched = Scheduler()
-@sched.interval_schedule(seconds=60)
+@sched.interval_schedule(seconds=APP.config['SYNC_INTERVAL'])
 def index_all_users_job():
     with APP.app_context():
-        UserDataService.index_all_users()
+        UserDataService.sync_all_users()
 sched.start()
     
 @APP.errorhandler(400)

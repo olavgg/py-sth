@@ -26,6 +26,7 @@ Created on Dec 23, 2012
 
 from domain.user import User
 from services.user_data_service import UserDataService
+from services.user_service import UserService
 from flask import current_app as app
 
 class Bootstrap(object):
@@ -53,8 +54,7 @@ class Bootstrap(object):
         ''' Init dev data '''
         User('testolav')
         User('olavgg')
-        User('olav')
-        #UserDataService.index_all_users()
+        User('testolav2')
         
     @staticmethod
     def init_test_data():
@@ -65,7 +65,6 @@ class Bootstrap(object):
     @staticmethod
     def init_prod_data():
         ''' Init prod data '''
-        User('olavgg')
-        User('testolav')
+        UserService.find_users_in_home_path()
         UserDataService.index_all_users()
         

@@ -42,6 +42,7 @@ class Config(object):
     ZPOOL = u"/sbin/zpool"
     DATEFORMAT = u'%Y-%m-%d %H:%M'
     MAX_PROCESSES = 4
+    SYNC_INTERVAL = 3600 * 24
     
     @staticmethod
     def set_app_password(password):
@@ -77,6 +78,7 @@ class DevelopmentConfig(Config):
     '''
     DEBUG = True
     LOGFILE = u'debug.log'
+    SYNC_INTERVAL = 300
     
     @staticmethod
     def set_app_password(password):

@@ -41,7 +41,8 @@ class UserDataService(object):
     
     def __init__(self, user):
         '''Constructor'''
-        if isinstance(user, User) and isinstance(user.uid, str):
+        if isinstance(user, User) and (
+                isinstance(user.uid, str) or isinstance(user.uid, unicode)):
             self.__syspath = app.config['USER_HOME_PATH']
             self.__path = u"{path}/{uid}".format(
                 path=self.__syspath,
@@ -49,8 +50,10 @@ class UserDataService(object):
             )
             self.__user = user
             self.__es_service = EsService.get_instance()
-            self.__es_node_path = (
-                u'{idx_name}/node/_bulk'.format(idx_name=user.uid))
+            self.__bulk_insert_url = u'{uid}/node/_bulk'.format(uid=user.uid)
+            self.__settings_url = u'{uid}/_settings'.format(uid = user.uid)
+            self.__count_url = u'{uid}/node/_search?search_type=count'.format(
+                uid=user.uid)
         else:
             raise TypeError('argument must be of type User')
     
@@ -60,9 +63,19 @@ class UserDataService(object):
         return self.__es_service
     
     @property
-    def es_node_path(self):
-        ''' Get ElasticSearch node url '''
-        return self.__es_node_path
+    def bulk_insert_url(self):
+        ''' Get bulk insert url '''
+        return self.__bulk_insert_url
+    
+    @property
+    def settings_url(self):
+        ''' Get settings url '''
+        return self.__settings_url
+    
+    @property
+    def count_url(self):
+        ''' Get count url '''
+        return self.__count_url
     
     @property
     def user(self):
@@ -92,13 +105,13 @@ class UserDataService(object):
     def find_all_folders(self, folder=None):
         ''' Find all folders for user, do not return symlinks '''
         if folder == None:
-            cmd = u'find {path} -type d | sed "s/\{syspath}//"'.format(
+            cmd = u'find "{path}" -type d | sed "s/\{syspath}//"'.format(
                 path = self.path,
                 syspath = self.syspath
             )
         else:
             if isinstance(folder, Folder):
-                cmd = u'find {path} -type d | sed "s/\{syspath}//"'.format(
+                cmd = u'find "{path}" -type d | sed "s/\{syspath}//"'.format(
                     path = folder.sys_path,
                     syspath = self.syspath
                 )
@@ -164,7 +177,7 @@ class UserDataService(object):
             }
             folder_bulk.append(data)
             items_indexed += self.index_files(folder)
-        self.es_service.bulk_insert(self.es_node_path, folder_bulk)
+        self.es_service.bulk_insert(self.bulk_insert_url, folder_bulk)
         items_indexed += len(folders)
         return items_indexed
     
@@ -184,7 +197,7 @@ class UserDataService(object):
             }
             file_bulk.append(fdata)
         if len(file_bulk) > 0:
-            self.es_service.bulk_insert(self.es_node_path, file_bulk)
+            self.es_service.bulk_insert(self.bulk_insert_url, file_bulk)
         return len(file_bulk)
         
     def build_index(self):
@@ -203,12 +216,6 @@ class UserDataService(object):
             app.logger.error(u'An error occured while creating the index')
             return False
         items_indexed = self.index_folders_and_files()
-        result = self.es_service.conn.post(
-            '{idx_name}/_flush'.format(idx_name=self.user.uid))
-        if result['status'] != 200:
-            app.logger.error(str(result))
-            app.logger.error(u'An error occured when executing an index flush')
-            return False
         msg = u'Indexed {total} items for user {uid}.'.format(
             total=items_indexed,
             uid = self.user.uid
@@ -216,13 +223,14 @@ class UserDataService(object):
         max_seg_url = '{uid}/_optimize?max_num_segments=4'.format(
             uid = self.user.uid)
         self.es_service.conn.post(max_seg_url, data={})
-        settings_url = '{uid}/_settings'.format(uid = self.user.uid)
-        self.es_service.conn.put(settings_url, data={
+        self.es_service.conn.put(self.settings_url, data={
             "index": {
                 "number_of_replicas": 1,
                 "refresh_interval" : "1s"
             }
         })
+        self.optimize_index()
+        self.flush_index()
         app.logger.info(msg)
     
     def get_index_metadata(self):
@@ -253,7 +261,7 @@ class UserDataService(object):
                     "_all" : {"enabled" : False},
                     'properties': {
                         'name': {
-                            'type': 'string', 'index': 'analyzed'
+                            'type': 'string', 'index': 'not_analyzed'
                         },
                         'date_modified': {
                             'type': 'date', 
@@ -275,21 +283,32 @@ class UserDataService(object):
         }
     def find_by_parent_id(self, parent_id):
         ''' Return document ids by parent id '''
+        max_size = int(self.es_service.conn.get(self.count_url, data={
+            "query": {
+                "bool": {
+                    "must": [{
+                        "term": {
+                            "parent": parent_id
+                        }
+                    }]
+                }
+            }
+        })['hits']['total'])
         query_url = '{idx_name}/node/_search'.format(idx_name=self.user.uid)
         results = self.es_service.conn.get(query_url,data={
-                "from": 0,
-                "size": 999999999,
-                "fields": [],
-                "query": {
-                    "bool": {
-                        "must": [{
-                            "term": {
-                                "parent": parent_id
-                            }
-                        }]
-                    }
+            "from": 0,
+            "size": max_size,
+            "fields": [],
+            "query": {
+                "bool": {
+                    "must": [{
+                        "term": {
+                            "parent": parent_id
+                        }
+                    }]
                 }
-            })
+            }
+        })
         if results['status'] != 200:
             return list()
         return [ doc['_id'] for doc in results['hits']['hits'] ]
@@ -334,7 +353,8 @@ class UserDataService(object):
                 size = ''
             put_url = '{idx_name}/node/{id}'.format(
                 idx_name=self.user.uid,
-                id=uenc(uenc(node.path))) # dual url encoding as ES decodes it
+                # dual url encoding as ES decodes it
+                id=uenc(uenc(node.path.encode('utf-8'))))
             data={
                 'name':node.name,
                 'parent':uenc(node.get_parent()),
@@ -366,12 +386,7 @@ class UserDataService(object):
         folder = Folder.get_instance(node_id, decode=True)
         if folder:
             index_id = uenc(folder.path.encode('utf-8'))
-            search_url = u'{idx_name}/node/_search'.format(
-                idx_name=self.user.uid)
-            max_size = int(self.es_service.conn.get(search_url,data={
-                "from": 0,
-                "size": 0,
-                "fields": [],
+            max_size = int(self.es_service.conn.get(self.count_url,data={
                 "query": {
                     "bool": {
                         "must": [{
@@ -382,6 +397,8 @@ class UserDataService(object):
                     }
                 }
             })['hits']['total'])
+            search_url = u'{idx_name}/node/_search'.format(
+                idx_name=self.user.uid)
             results = self.es_service.conn.get(search_url,data={
                 "from": 0,
                 "size": max_size,
@@ -406,6 +423,7 @@ class UserDataService(object):
                 self.delete_document_by_id(doc_to_delete)
             for new_document in new_docs:
                 self.index_document_by_node(disk_nodes[new_document])
+            self.flush_index()
         else:
             app.logger.error('No folder found by passing node id: {node_id}'.format(
                 node_id=node_id
@@ -418,6 +436,7 @@ class UserDataService(object):
         ES and compare them for a cleanup. In case some folders have been 
         renamed.
         '''
+        self.disable_realtime_indexing()
         disk_folders = Folder.find_all_folders(self.user)
         es_data = {"docs":[]}
         for folder in disk_folders:
@@ -433,19 +452,17 @@ class UserDataService(object):
                            if d_id['exists'] == True ]
             for folder in disk_folders:
                 if folder.index_id in es_results:
-                    app.logger.debug(u'Syncing folder: {f}'.format(f=folder.sys_path))
+                    app.logger.debug(u'Syncing folder: {f}'.format(
+                        f=folder.sys_path))
                     self.do_folder_sync(folder.index_id)
                 else:
-                    app.logger.debug('Created folder: {f}'.format(f=folder.sys_path))
+                    app.logger.debug(u'Created folder: {f}'.format(
+                        f=folder.sys_path))
                     self.index_folders_and_files(folder=folder)
         else:
             app.logger.error(u'Couldn\'t fetch documents. Full sync stopped.')
             return
-        search_url = '{idx_name}/_search'.format(idx_name=self.user.uid)
-        max_size = int(self.es_service.conn.get(search_url,data={
-            "from": 0,
-            "size": 0,
-            "fields": [],
+        max_size = int(self.es_service.conn.get(self.count_url, data={
             "query": {
                 "bool": {
                     "must": [{
@@ -456,6 +473,7 @@ class UserDataService(object):
                 }
             }
         })['hits']['total'])
+        search_url = '{idx_name}/_search'.format(idx_name=self.user.uid)
         es_docs = self.es_service.conn.get(search_url, data={
             "from": 0,
             "size": max_size,
@@ -482,7 +500,49 @@ class UserDataService(object):
                 deleted_ids.append(
                     self.delete_document_by_id(doc_to_delete))
         app.logger.debug(u'Deleted nodes with id like:\n {name}'
-                  .format(name=deleted_ids))
+            .format(name=deleted_ids))
+        self.enable_realtime_indexing()
+        self.optimize_index()
+        self.flush_index()
+        
+    def flush_index(self):
+        '''
+        The flush process of an index basically frees memory from the index by
+        flushing data to the index storage and clearing the internal
+        transaction log. By default, ElasticSearch uses memory heuristics in
+        order to automatically trigger flush operations as required in order
+        to clear memory.
+        '''
+        url = '{idx_name}/_flush'.format(idx_name=self.user.uid)
+        self.es_service.conn.post(url, data={})
+        
+    def optimize_index(self):
+        '''
+        The optimize process basically optimizes the index for faster search 
+        operations (and relates to the number of segments a lucene index holds
+        within each shard).
+        '''
+        url = '{idx_name}/_optimize'.format(idx_name=self.user.uid)
+        self.es_service.conn.post(url, data={})
+        
+    def disable_realtime_indexing(self):
+        ''' 
+        Increase the refresh interval to disable realtime indexing
+        '''
+        self.es_service.conn.put(self.settings_url, data={
+            "index": {
+                "refresh_interval" : "120s"
+            }
+        })
+    def enable_realtime_indexing(self):
+        ''' 
+        Decrease the refresh interval to enable realtime indexing
+        '''
+        self.es_service.conn.put(self.settings_url, data={
+            "index": {
+                "refresh_interval" : "1s"
+            }
+        })
     
     @staticmethod
     def index_all_users():

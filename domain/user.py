@@ -23,6 +23,7 @@ Created on Dec 11, 2012
 
 @Author: Olav Groenaas Gjerde
 '''
+from flask import current_app as app
 
 class User(object):
     '''User object'''
@@ -33,6 +34,7 @@ class User(object):
         self._uid = uid
         if mock == False:
             User.users[uid] = self
+            app.logger.info(u'Added user: ' + uid)
 
     def __str__(self):
         return self._uid

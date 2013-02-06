@@ -27,9 +27,8 @@ import os
 import datetime
 from urllib import unquote_plus
 
-from conf import CONFIG
-from conf import LOG
-from conf import DATEFORMAT
+from flask import current_app as app
+
 from domain.node import Node
 
 class File(Node):
@@ -46,21 +45,21 @@ class File(Node):
         ''' Create file meta-data by reading it from disk '''
         if decode:
             path = unquote_plus(path)
-        disk_path = CONFIG['USER_HOME_PATH'] + path
-        LOG.debug(disk_path)
+        disk_path = app.config['USER_HOME_PATH'] + path
+        app.logger.debug(disk_path)
         if os.path.exists(disk_path) == True:
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(disk_path)).strftime(DATEFORMAT)
+                os.path.getmtime(disk_path)).strftime(app.config['DATEFORMAT'])
             values = {
                 'name': os.path.basename(disk_path),
                 'path': path,
                 'sys_path': disk_path,
                 'date_modified': date_modified,
-                'type':'FILE'
+                'type':Node.FILE_TYPE
             }
         else:
             error_msg = u"path doesn't exist: {path}".format(path=disk_path)
-            LOG.error(error_msg)
+            app.logger.error(error_msg)
             raise ValueError(error_msg)
         return File(values)
     
