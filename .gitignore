@@ -1,5 +1,6 @@
 *.py[cod]
 conf/config.py
+*.pid
 
 # C extensions
 *.so

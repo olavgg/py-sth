@@ -58,4 +58,5 @@ def first_request_process(values):
             if res.getcode() == 200:
                 break
         except IOError, err:
+            app.logger.error(url)
             app.logger.error(err)

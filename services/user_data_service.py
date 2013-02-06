@@ -521,8 +521,14 @@ class UserDataService(object):
         The optimize process basically optimizes the index for faster search 
         operations (and relates to the number of segments a lucene index holds
         within each shard).
+        
+        Should the optimize process only expunge segments with deletes in it. 
+        In Lucene, a document is not deleted from a segment, just marked as
+        deleted. During a merge process of segments, a new segment is created
+        that does not have those deletes. This flag allow to only merge 
+        segments that have deletes.
         '''
-        url = '{idx_name}/_optimize'.format(idx_name=self.user.uid)
+        url = '{idx_name}/_optimize?only_expunge_deletes=true'.format(idx_name=self.user.uid)
         self.es_service.conn.post(url, data={})
         
     def disable_realtime_indexing(self):
