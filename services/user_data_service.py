@@ -123,9 +123,14 @@ class UserDataService(object):
             line = unicode(line, 'utf8')
             app.logger.info(type(line))
             app.logger.info(line)
-            fullpath = (self.syspath+line).encoding('utf-8')
-            if os.path.islink(fullpath):
-                continue
+            try:
+                fullpath = (self.syspath+line)
+                if os.path.islink(fullpath):
+                    continue
+            except:
+                app.logger.info(type(line))
+                app.logger.info(line)
+                app.logger.info(line.encode('utf-8'))
             splitted_path = line.split('/')
             folder = splitted_path[len(splitted_path)-1]
             parent_folder = line[:-(len(folder)+1)]
