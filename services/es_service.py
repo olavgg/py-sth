@@ -65,13 +65,13 @@ class EsService(object):
     def create_index(self, name, data=dict(), overwrite=False):
         ''' 
         Create index , overwrite if a third argument/overwrite with value true
-        is passed. 
+        is passed. Index name is automatically lower cased.
         '''
         if overwrite:
             idx_exists = self.conn.head(name)
             if idx_exists:
                 self.conn.delete(name)
-        result = self.conn.put(name, data=data)
+        result = self.conn.put(name.lower(), data=data)
         if result['status'] != 200:
             app.logger.error("Couldn't create index")
         return result
