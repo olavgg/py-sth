@@ -82,7 +82,7 @@ class Folder(Node):
             files = [o for o in os.listdir(
                 self.sys_path) if (os.path.isfile(self.sys_path+'/'+o) and not
                 os.path.islink(self.sys_path+'/'+o))]
-        except UnicodeDecodeError, e:
+        except UnicodeEncodeError, e:
             app.logger.error(str(e))
             app.logger.error(type(self.sys_path))
             app.logger.error(self.sys_path)
