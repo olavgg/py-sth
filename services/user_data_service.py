@@ -105,13 +105,13 @@ class UserDataService(object):
     def find_all_folders(self, folder=None):
         ''' Find all folders for user, do not return symlinks '''
         if folder == None:
-            cmd = u'find "{path}" -type d | sed "s/\{syspath}//"'.format(
+            cmd = u'find "{path}" -type d | sed "s#{syspath}##"'.format(
                 path = self.path,
                 syspath = self.syspath
             )
         else:
             if isinstance(folder, Folder):
-                cmd = u'find "{path}" -type d | sed "s/\{syspath}//"'.format(
+                cmd = u'find "{path}" -type d | sed "s#{syspath}##"'.format(
                     path = folder.sys_path,
                     syspath = self.syspath
                 )
