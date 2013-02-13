@@ -139,9 +139,9 @@ class Node(object):
         
     def get_parent(self):
         ''' Return parent folder for node '''
-        app.logger.info(self.path)
         app.logger.info(self.name)
-        return self.path[:-(len(self.name)+1)]
+        app.logger.info(len(self.name))
+        return self.path.replace(u'/'+self.name,'')
     
     def get_size(self):
         ''' Return node disk size '''
