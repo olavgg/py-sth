@@ -49,11 +49,14 @@ class UserDataService(object):
                 uid=user.uid
             )
             self.__user = user
+            self.__idx_name = user.uid.lower()
             self.__es_service = EsService.get_instance()
-            self.__bulk_insert_url = u'{uid}/node/_bulk'.format(uid=user.uid)
-            self.__settings_url = u'{uid}/_settings'.format(uid = user.uid)
+            self.__bulk_insert_url = u'{uid}/node/_bulk'.format(
+                uid = self.__idx_name)
+            self.__settings_url = u'{uid}/_settings'.format(
+                uid = self.__idx_name)
             self.__count_url = u'{uid}/node/_search?search_type=count'.format(
-                uid=user.uid)
+                uid = self.__idx_name)
         else:
             raise TypeError('argument must be of type User')
     
@@ -91,6 +94,11 @@ class UserDataService(object):
     def path(self, value):
         ''' Set path '''
         self.__path = value
+        
+    @property
+    def idx_name(self):
+        ''' Get index name '''
+        return self.__idx_name
         
     @property
     def syspath(self):
@@ -294,7 +302,7 @@ class UserDataService(object):
                 }
             }
         })['hits']['total'])
-        query_url = '{idx_name}/node/_search'.format(idx_name=self.user.uid)
+        query_url = '{idx_name}/node/_search'.format(idx_name=self.idx_name)
         results = self.es_service.conn.get(query_url,data={
             "from": 0,
             "size": max_size,
@@ -319,7 +327,7 @@ class UserDataService(object):
         that has the id as parent. 
         '''
         ids_to_delete = self.find_by_parent_id(document_id)
-        del_url = '{idx_name}/node/_query'.format(idx_name=self.user.uid)
+        del_url = '{idx_name}/node/_query'.format(idx_name=self.idx_name)
         result = self.es_service.conn.delete(del_url, data={
             "term" : { "parent" : document_id }
         })
@@ -333,7 +341,7 @@ class UserDataService(object):
     def delete_document_by_id(self, document_id):
         ''' Deletes documents from ES by id string argument '''
         del_url = '{idx_name}/node/{id}'.format(
-            idx_name=self.user.uid,
+            idx_name=self.idx_name,
             id=uenc(document_id)) # dual url encoding as ES decodes it
         result = self.es_service.conn.delete(del_url)
         if result['status'] != 200:
@@ -352,7 +360,7 @@ class UserDataService(object):
             else:
                 size = ''
             put_url = '{idx_name}/node/{id}'.format(
-                idx_name=self.user.uid,
+                idx_name=self.idx_name,
                 # dual url encoding as ES decodes it
                 id=uenc(uenc(node.path.encode('utf-8'))))
             data={
@@ -398,7 +406,7 @@ class UserDataService(object):
                 }
             })['hits']['total'])
             search_url = u'{idx_name}/node/_search'.format(
-                idx_name=self.user.uid)
+                idx_name=self.idx_name)
             results = self.es_service.conn.get(search_url,data={
                 "from": 0,
                 "size": max_size,
@@ -473,7 +481,7 @@ class UserDataService(object):
                 }
             }
         })['hits']['total'])
-        search_url = '{idx_name}/_search'.format(idx_name=self.user.uid)
+        search_url = '{idx_name}/_search'.format(idx_name=self.idx_name)
         es_docs = self.es_service.conn.get(search_url, data={
             "from": 0,
             "size": max_size,
@@ -513,7 +521,7 @@ class UserDataService(object):
         order to automatically trigger flush operations as required in order
         to clear memory.
         '''
-        url = '{idx_name}/_flush'.format(idx_name=self.user.uid)
+        url = '{idx_name}/_flush'.format(idx_name=self.idx_name)
         self.es_service.conn.post(url, data={})
         
     def optimize_index(self):
@@ -528,7 +536,8 @@ class UserDataService(object):
         that does not have those deletes. This flag allow to only merge 
         segments that have deletes.
         '''
-        url = '{idx_name}/_optimize?only_expunge_deletes=true'.format(idx_name=self.user.uid)
+        url = '{idx_name}/_optimize?only_expunge_deletes=true'.format(
+            idx_name = self.idx_name)
         self.es_service.conn.post(url, data={})
         
     def disable_realtime_indexing(self):
