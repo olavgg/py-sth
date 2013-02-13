@@ -94,7 +94,7 @@ class Folder(Node):
             app.logger.error(str(e))
             app.logger.error(type(self.sys_path))
             app.logger.error(self.sys_path)
-            new_path = self.sys_path.decode('utf-8')
+            new_path = self.sys_path.encode('utf-8')
             files = [o for o in os.listdir(
                 new_path) if (os.path.isfile(new_path+'/'+o) and not
                 os.path.islink(new_path+'/'+o))]
