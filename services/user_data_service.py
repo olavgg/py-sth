@@ -449,7 +449,7 @@ class UserDataService(object):
         es_data = {"docs":[]}
         for folder in disk_folders:
             es_data["docs"].append({
-                "_index" : self.user.uid,
+                "_index" : self.idx_name,
                 "_type" : "node",
                 "_id" : folder.index_id,
                 "fields" : ["_id"]
