@@ -48,7 +48,13 @@ class Folder(Node):
         if decode:
             path = unicode(unquote_plus(path.encode('utf-8')),'utf-8')
         disk_path = app.config['USER_HOME_PATH'] + path
-        if os.path.exists(disk_path) == True:
+        try:
+            path_exists = os.path.exists(disk_path)
+        except UnicodeEncodeError, e :
+            app.logger.error(str(e))
+            app.logger.error(disk_path)
+            path_exists = os.path.exists(disk_path.encode('utf-8'))
+        if path_exists == True:
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(disk_path)).strftime(app.config['DATEFORMAT'])
             values = {
