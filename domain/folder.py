@@ -53,7 +53,8 @@ class Folder(Node):
         except UnicodeEncodeError, e :
             app.logger.error(str(e))
             app.logger.error(disk_path)
-            path_exists = os.path.exists(disk_path.encode('utf-8'))
+            disk_path = disk_path.encode('utf-8')
+            path_exists = os.path.exists(disk_path)
         if path_exists == True:
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(disk_path)).strftime(app.config['DATEFORMAT'])
