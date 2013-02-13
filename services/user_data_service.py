@@ -125,7 +125,7 @@ class UserDataService(object):
                 fullpath = (self.syspath+line)
                 if os.path.islink(fullpath):
                     continue
-            except UnicodeDecodeError, e:
+            except UnicodeEncodeError, e:
                 app.logger.error(str(e))
                 app.logger.error(type(line))
                 app.logger.error(line)
