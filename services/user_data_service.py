@@ -123,13 +123,14 @@ class UserDataService(object):
             line = unicode(line, 'utf8')
             app.logger.info(type(line))
             app.logger.info(line)
-            if os.path.islink(self.syspath+line):
+            fullpath = (self.syspath+line).encoding('utf-8')
+            if os.path.islink(fullpath):
                 continue
             splitted_path = line.split('/')
             folder = splitted_path[len(splitted_path)-1]
             parent_folder = line[:-(len(folder)+1)]
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(self.syspath+line)).strftime(
+                os.path.getmtime(fullpath)).strftime(
                     app.config['DATEFORMAT'])
             data = {'name':folder, 'parent':parent_folder,
                 'path':line,'date_modified':date_modified}
