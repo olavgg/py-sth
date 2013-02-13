@@ -121,22 +121,13 @@ class UserDataService(object):
         folders = []
         for line in results[0]:
             line = unicode(line, 'utf8')
-            try:
-                fullpath = (self.syspath+line)
-                if os.path.islink(fullpath):
-                    continue
-            except UnicodeEncodeError, e:
-                app.logger.error(str(e))
-                app.logger.error(type(line))
-                app.logger.error(line)
-                fullpath = (self.syspath+line).encode('utf-8')
-                if os.path.islink(fullpath):
-                    continue
+            if os.path.islink(self.syspath+line):
+                continue
             splitted_path = line.split('/')
             folder = splitted_path[len(splitted_path)-1]
             parent_folder = line[:-(len(folder)+1)]
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(fullpath)).strftime(
+                os.path.getmtime(self.syspath+line)).strftime(
                     app.config['DATEFORMAT'])
             data = {'name':folder, 'parent':parent_folder,
                 'path':line,'date_modified':date_modified}

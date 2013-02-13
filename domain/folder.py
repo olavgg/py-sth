@@ -48,14 +48,7 @@ class Folder(Node):
         if decode:
             path = unicode(unquote_plus(path.encode('utf-8')),'utf-8')
         disk_path = app.config['USER_HOME_PATH'] + path
-        try:
-            path_exists = os.path.exists(disk_path)
-        except UnicodeEncodeError, e :
-            app.logger.error(str(e))
-            app.logger.error(disk_path)
-            disk_path = disk_path.encode('utf-8')
-            path_exists = os.path.exists(disk_path)
-        if path_exists == True:
+        if os.path.exists(disk_path) == True:
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(disk_path)).strftime(app.config['DATEFORMAT'])
             values = {
@@ -85,26 +78,9 @@ class Folder(Node):
     
     def scan_for_files(self):
         ''' Scan for files '''
-        try:
-            files = [o for o in os.listdir(
-                self.sys_path) if (os.path.isfile(self.sys_path+'/'+o) and not
-                os.path.islink(self.sys_path+'/'+o))]
-        except UnicodeEncodeError, e:
-            app.logger.error(str(e))
-            app.logger.error(type(self.sys_path))
-            app.logger.error(self.sys_path)
-            new_path = self.sys_path.encode('utf-8')
-            files = [o for o in os.listdir(
-                new_path) if (os.path.isfile(new_path+'/'+o) and not
-                os.path.islink(new_path+'/'+o))]
-        except UnicodeDecodeError, e:
-            app.logger.error(str(e))
-            app.logger.error(type(self.sys_path))
-            app.logger.error(self.sys_path)
-            new_path = self.sys_path.encode('utf-8')
-            files = [o for o in os.listdir(
-                new_path) if (os.path.isfile(new_path+'/'+o) and not
-                os.path.islink(new_path+'/'+o))]
+        files = [o for o in os.listdir(
+            self.sys_path) if (os.path.isfile(self.sys_path+'/'+o) and not
+            os.path.islink(self.sys_path+'/'+o))]
         for line in files:
             path = u'{folder}/{file}'.format(folder=self.path, file=line)
             node = Node.get_instance(path)
