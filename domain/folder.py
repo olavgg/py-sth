@@ -78,6 +78,8 @@ class Folder(Node):
     
     def scan_for_files(self):
         ''' Scan for files '''
+        app.logger.info(type(self.sys_path))
+        app.logger.info(self.sys_path)
         files = [o for o in os.listdir(
             self.sys_path) if (os.path.isfile(self.sys_path+'/'+o) and not
             os.path.islink(self.sys_path+'/'+o))]

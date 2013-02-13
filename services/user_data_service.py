@@ -121,6 +121,8 @@ class UserDataService(object):
         folders = []
         for line in results[0]:
             line = unicode(line, 'utf8')
+            app.logger.info(type(file))
+            app.logger.info(file)
             if os.path.islink(self.syspath+line):
                 continue
             splitted_path = line.split('/')
