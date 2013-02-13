@@ -127,12 +127,13 @@ class Folder(Node):
     def find_all_folders(user, folder=None):
         ''' Find all folders for user '''
         if folder == None:
-            cmd = (u'find "{path}/{uid}" -type d | sed "s/\{path}//"').format(
+            cmd = (u'find "{path}/{uid}" -type d | sed "s#{path}##"').format(
                 path = app.config['USER_HOME_PATH'],
                 uid = user.uid,
             )
         else:
-            cmd = (u'find "{path}" -type d | sed "s/\{path}//"').format(
+            #cmd = (u'find "{path}" -type d | sed "s/\{path}//"').format(
+            cmd = (u'find "{path}" -type d | sed "s#{path}##"').format(
                 path = folder.syspath
             )
         results = ShellCommand(cmd).run()
