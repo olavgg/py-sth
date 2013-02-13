@@ -52,15 +52,12 @@ class Bootstrap(object):
     @staticmethod
     def init_dev_data():
         ''' Init dev data '''
-        User('testolav')
-        User('olavgg')
-        User('testolav2')
+        UserService.find_users_in_home_path()
         
     @staticmethod
     def init_test_data():
         ''' Init test data '''
-        User('olavgg')
-        User('testolav')
+        UserService.find_users_in_home_path()
         
     @staticmethod
     def init_prod_data():
