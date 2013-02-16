@@ -269,7 +269,7 @@ class UserDataService(object):
                     "_all" : {"enabled" : False},
                     'properties': {
                         'name': {
-                            'type': 'string', 'index': 'not_analyzed'
+                            'type': 'string', 'index': 'analyzed'
                         },
                         'date_modified': {
                             'type': 'date', 
