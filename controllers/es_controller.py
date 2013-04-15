@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,7 +22,7 @@ SOFTWARE.
 Created on Jan 2, 2013
 
 @Author: Olav Groenaas Gjerde
-'''
+"""
 
 from flask import Blueprint
 from flask import jsonify
@@ -41,30 +41,33 @@ from domain.user import User
 
 PAGE = Blueprint('es_page', __name__)
 
+
 @PAGE.route("/es", methods=['GET', 'POST'])
 @with_http_auth
 def index():
-    ''' Show status '''
+    """ Show status """
     es_service = EsService()
     return jsonify(es_service.get_status())
+
 
 @PAGE.route("/es/<uid>", methods=['GET', 'POST'])
 @with_http_auth
 def listall(uid):
-    ''' List data from the specified user '''
+    """ List data from the specified user """
     user = User.get(uid)
     data = UserDataService(user).find_all_folders()
     return jsonify(data)
+
 
 @PAGE.route("/es/build/<uid>/", methods=['GET', 'POST'])
 @disallow_special_characters
 @with_http_auth
 def build(uid):
-    '''
+    """
     Build new index for the specified user, build folders first and then
     later fill it with files. This function is heavy, so it executes
     asynchronously.
-    '''
+    """
     user = User.get(uid)
     if user:
         try:
@@ -75,48 +78,52 @@ def build(uid):
         data = dict(status='job created')
         return jsonify(data), 201
     abort(404)
-    
+
+
 @PAGE.route("/es/build/all/", methods=['GET', 'POST'])
 @with_http_auth
 def build_all():
-    ''' Build new index for all users '''
+    """ Build new index for all users """
     total = UserDataService.index_all_users()
-    
+
     data = dict(status='ok',
                 jobs=total,
                 description='{total} jobs created'.format(total=total))
     return jsonify(data), 200
 
+
 @PAGE.route("/es/create/<uid>/", methods=['GET', 'POST'])
 @disallow_special_characters
 @with_http_auth
 def create(uid):
-    ''' Create new index for the specified user'''
+    """ Create new index for the specified user"""
     user = User.get(uid)
     if user:
         return jsonify(EsService().create_index(user.uid, overwrite=True))
     abort(404)
 
-@PAGE.route("/es/sync/all/", methods=['GET','POST'])
+
+@PAGE.route("/es/sync/all/", methods=['GET', 'POST'])
 @with_http_auth
 def sync_all():
-    '''
+    """
     Sync the filesystem and ES DB by scanning and comparing datastructures
     on both the filesystem and ES DB.
-    '''
+    """
     total = UserDataService.sync_all_users()
     data = dict(status='ok',
                 jobs=total,
                 description='{total} jobs created'.format(total=total))
     return jsonify(data), 200
 
-@PAGE.route("/es/sync/<string:uid>/", methods=['GET','POST'])
+
+@PAGE.route("/es/sync/<string:uid>/", methods=['GET', 'POST'])
 @with_http_auth
 def sync_uid(uid):
-    '''
+    """
     Sync the filesystem and ES DB by scanning and comparing datastructures
     on both the filesystem and ES DB.
-    '''
+    """
     user = User.get(uid)
     if user:
         try:
@@ -128,13 +135,14 @@ def sync_uid(uid):
         return jsonify(data), 201
     abort(404)
 
-@PAGE.route("/es/sync/<string:uid>/<string:node_id>", methods=['GET','POST'])
+
+@PAGE.route("/es/sync/<string:uid>/<string:node_id>", methods=['GET', 'POST'])
 @with_http_auth
 def sync_folder(uid, node_id):
-    '''
+    """
     Sync the folder by comparing datastructures on both the filesystem and the
     ES DB.
-    '''
+    """
     user = User.get(uid)
     if user:
         try:
