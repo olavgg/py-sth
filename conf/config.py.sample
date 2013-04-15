@@ -41,7 +41,7 @@ class Config(object):
     GREP = u"/usr/bin/grep"
     ZFS = u"/sbin/zfs"
     ZPOOL = u"/sbin/zpool"
-    DATEFORMAT = u'%Y-%m-%d %H:%M'
+    DATE_FORMAT = u'%Y-%m-%d %H:%M'
     MAX_PROCESSES = 4
     SYNC_INTERVAL = 3600 * 24
     

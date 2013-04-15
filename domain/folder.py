@@ -50,7 +50,7 @@ class Folder(Node):
         disk_path = app.config['USER_HOME_PATH'] + path
         if os.path.exists(disk_path) == True:
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(disk_path)).strftime(app.config['DATEFORMAT'])
+                os.path.getmtime(disk_path)).strftime(app.config['DATE_FORMAT'])
             values = {
                 'name':os.path.basename(disk_path),
                 'path':path,

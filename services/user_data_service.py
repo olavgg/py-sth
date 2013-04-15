@@ -136,7 +136,7 @@ class UserDataService(object):
             parent_folder = line[:-(len(folder)+1)]
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(self.syspath+line)).strftime(
-                    app.config['DATEFORMAT'])
+                    app.config['DATE_FORMAT'])
             data = {'name':folder, 'parent':parent_folder,
                 'path':line,'date_modified':date_modified}
             folders.append(data)
@@ -156,7 +156,7 @@ class UserDataService(object):
             path = u'{folder}/{file}'.format(folder=folder.path, file=line)
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(folder.sys_path)).strftime(
-                    app.config['DATEFORMAT'])
+                    app.config['DATE_FORMAT'])
             data = {
                 'name':line,'parent':folder.path,'path':path,
                 'date_modified':date_modified

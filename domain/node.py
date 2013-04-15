@@ -60,7 +60,7 @@ class Node(object):
             elif os.path.isdir(disk_path):
                 node_type = Node.FOLDER_TYPE
             date_modified = datetime.datetime.fromtimestamp(
-                os.path.getmtime(disk_path)).strftime(app.config['DATEFORMAT'])
+                os.path.getmtime(disk_path)).strftime(app.config['DATE_FORMAT'])
             values = {
                 'name': os.path.basename(disk_path),
                 'path': path,
