@@ -42,3 +42,6 @@ nosetests.xml
 # Eclipse
 .pmd
 .settings
+*.iml
+.idea
+out
