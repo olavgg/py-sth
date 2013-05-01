@@ -50,6 +50,8 @@ def with_http_auth(func):
         headers = [unicode(i) for i in request.headers.keys()]
         app.logger.info(auth_header_name in headers)
         for item in headers:
+            app.logger.info( item )
+            app.logger.info( type(item))
             if item == u"Sth-key":
                 app.logger.info( item )
                 app.logger.info( type(item))
