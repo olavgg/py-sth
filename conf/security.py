@@ -49,6 +49,8 @@ def with_http_auth(func):
         # Check HTTP Header
         app.logger.info(auth_header_name)
         app.logger.info(request.headers.keys())
+        app.logger.info(auth_header_name in request.headers.keys())
+        app.logger.info(request.headers.get(auth_header_name) == auth_token)
         if (auth_header_name in request.headers.keys()
                 and request.headers.get(auth_header_name) == auth_token):
             return func(*args, **kwargs)
