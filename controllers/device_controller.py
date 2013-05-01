@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,7 +22,7 @@ SOFTWARE.
 Created on Dec 11, 2012
 
 @Author: Olav Groenaas Gjerde
-'''
+"""
 
 from flask import Blueprint
 from flask import jsonify
@@ -35,15 +35,17 @@ from domain.user import User
 
 PAGE = Blueprint('device_page', __name__)
 
+
 @PAGE.route("/device", methods=['GET', 'POST'])
 @with_http_auth
 def index():
-    '''default view'''
+    """default view"""
     return redirect(url_for('.listall'))
+
 
 @PAGE.route("/device/list", methods=['GET', 'POST'])
 @with_http_auth
-def listall():
-    '''list all devices'''
+def list_all():
+    """list all devices"""
     data = UserDataService(User.get('olav')).find_all()
     return jsonify(data)

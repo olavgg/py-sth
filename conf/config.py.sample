@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,92 +22,112 @@ SOFTWARE.
 Created on Dec 8, 2012
 
 @Author: Olav Groenaas Gjerde
-'''
+"""
+
 
 class Config(object):
-    '''
+    """
     Default config for application
-    '''
+    """
 
+    # Enable debug mode
     DEBUG = False
+    # This will enable data mocking
     TESTING = False
+    # This is the http host address for this service, use the Nginx url.
     HOST = u"0.0.0.0"
-    PORT = 18080
+    # Port of the http host
+    PORT = 19090
+    # Specify the protocol, in production this should be 'https'
     PROTOCOL = u'http'
+    # Application log file
     LOGFILE = u'debug.log'
-    AUTH_TOKEN_HEADER_NAME = u'Sth-key'
+    # This is the name of the authentication header
+    AUTH_TOKEN_HEADER_NAME = u'Sth-Key'
+    # The secret value for the authentication header
     AUTH_TOKEN = u'test123456'
+    # The folder to start scanning/synchronizing nodes for regular users
     USER_HOME_PATH = u'/home'
+    # The folder to start scanning/synchronizing nodes for temporary users
+    USER_TEMP_PATH = u'/tank/temp'
+    # Full path for different OS commands
     SSH = u"/usr/bin/ssh"
     GREP = u"/usr/bin/grep"
     ZFS = u"/sbin/zfs"
     ZPOOL = u"/sbin/zpool"
+    # Date format for logging
     DATE_FORMAT = u'%Y-%m-%d %H:%M'
+    # Max number of multi-processes to run concurrently
+    # This will most likely be limited by IOPS, not CPU
     MAX_PROCESSES = 4
+    # The interval to do a full sync of users folder. Should most likely be
+    # adjusted to do a full sync by predicting user behaviour.
     SYNC_INTERVAL = 3600 * 24
-    
+
     @staticmethod
     def set_app_password(password):
-        ''' Set new application password'''
-        Config.APPPW = password
-        
+        """ Set new application password"""
+        Config.AUTH_TOKEN = password
+
     @staticmethod
     def set_zfs_path(path):
-        ''' Set new path to ZFS binary'''
+        """ Set new path to ZFS binary"""
         Config.ZFS = path
 
+
 class ProductionConfig(Config):
-    '''
+    """
     Production config
-    '''
+    """
 
     LOGFILE = 'production.log'
     PORT = 443
     PROTOCOL = u'https'
-    
+
     @staticmethod
     def set_app_password(password):
-        ''' Set new application password'''
-        ProductionConfig.APPPW = password
-        
+        """ Set new application password"""
+        ProductionConfig.AUTH_TOKEN = password
+
     @staticmethod
     def set_zfs_path(path):
-        ''' Set new path to ZFS binary'''
+        """ Set new path to ZFS binary"""
         ProductionConfig.ZFS = path
 
+
 class DevelopmentConfig(Config):
-    '''
+    """
     Development config
-    '''
+    """
     DEBUG = True
     LOGFILE = u'debug.log'
     SYNC_INTERVAL = 300
-    
+
     @staticmethod
     def set_app_password(password):
-        ''' Set new application password'''
-        DevelopmentConfig.APPPW = password
-        
+        """ Set new application password"""
+        DevelopmentConfig.AUTH_TOKEN = password
+
     @staticmethod
     def set_zfs_path(path):
-        ''' Set new path to ZFS binary'''
+        """ Set new path to ZFS binary"""
         DevelopmentConfig.ZFS = path
 
+
 class TestingConfig(Config):
-    '''
+    """
     Test config
-    '''
+    """
 
     TESTING = True
     LOGFILE = u'test.log'
-    
+
     @staticmethod
     def set_app_password(password):
-        ''' Set new application password'''
-        TestingConfig.APPPW = password
-        
+        """ Set new application password"""
+        TestingConfig.AUTH_TOKEN = password
+
     @staticmethod
     def set_zfs_path(path):
-        ''' Set new path to ZFS binary'''
+        """ Set new path to ZFS binary"""
         TestingConfig.ZFS = path
-    

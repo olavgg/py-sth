@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,46 +22,46 @@ SOFTWARE.
 Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
-'''
+"""
 
-from domain.user import User
 from services.user_data_service import UserDataService
 from services.user_service import UserService
 from flask import current_app as app
 
+
 class Bootstrap(object):
-    '''
+    """
     Bootstrap class, use this file to configure and setup data 
     that's needed for each environment.
-    '''
-    
+    """
+
     def __init__(self):
-        '''
+        """
         Constructor, based on the environment settings,
         run the method for data initialization.
-        '''
+        """
         app.logger.info('Bootstrap starting...')
-        if app.config['DEBUG'] == True:
+        if app.config['DEBUG'] is True:
             Bootstrap.init_dev_data()
-        elif app.config['TESTING'] == True:
+        elif app.config['TESTING'] is True:
             Bootstrap.init_test_data()
         else:
             Bootstrap.init_prod_data()
         app.logger.info('Bootstrap complete...')
-        
+
     @staticmethod
     def init_dev_data():
-        ''' Init dev data '''
+        """ Init dev data """
         UserService.find_users_in_home_path()
-        
+
     @staticmethod
     def init_test_data():
-        ''' Init test data '''
+        """ Init test data """
         UserService.find_users_in_home_path()
-        
+
     @staticmethod
     def init_prod_data():
-        ''' Init prod data '''
+        """ Init prod data """
         UserService.find_users_in_home_path()
-        UserDataService.index_all_users()
-        
+        #UserDataService.index_all_users()
+        UserDataService.sync_all_users()

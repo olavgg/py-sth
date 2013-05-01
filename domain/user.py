@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,16 +22,20 @@ SOFTWARE.
 Created on Dec 11, 2012
 
 @Author: Olav Groenaas Gjerde
-'''
+"""
 from flask import current_app as app
 
 class User(object):
-    '''User object'''
+    """User object"""
     users = {}
 
-    def __init__(self, uid, mock=False):
-        '''Constructor'''
+    def __init__(self, uid, mock=False, anonymous=False):
+        """Constructor"""
         self._uid = uid
+        if anonymous is True:
+            self._path = app.config['USER_HOME_PATH']
+        else:
+            self._path = app.config['USER_TEMP_PATH']
         if mock == False:
             User.users[uid] = self
             app.logger.info(u'Added user: ' + uid)
@@ -41,27 +45,27 @@ class User(object):
     
     @staticmethod
     def get_users_as_dict():
-        ''' Return all users as dictionary '''
+        """ Return all users as dictionary """
         return dict(users=User.get_users())
     
     @staticmethod
     def get_users():
-        ''' Return all users as list '''
+        """ Return all users as list """
         return User.users.values()
     
     @staticmethod
     def get(uid):
-        ''' Find user by uid, return None if not found '''
+        """ Find user by uid, return None if not found """
         if uid in User.users:
             return  User.users[uid]
         return None
         
     @property
     def uid(self):
-        ''' Get uid '''
+        """ Get uid """
         return self._uid
     
     @uid.setter
     def uid(self, value):
-        ''' Set uid '''
+        """ Set uid """
         self._uid = value

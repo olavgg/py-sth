@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,7 +22,7 @@ SOFTWARE.
 Created on Dec 11, 2012
 
 @Author: Olav Groenaas Gjerde
-'''
+"""
 import os
 import datetime
 from urllib import quote_plus as uenc
@@ -37,10 +37,10 @@ from services.es_service import EsService
 from services.task_service import TaskService
 
 class UserDataService(object):
-    ''' Find and index data for a user '''
+    """ Find and index data for a user """
     
     def __init__(self, user):
-        '''Constructor'''
+        """Constructor"""
         if isinstance(user, User) and (
                 isinstance(user.uid, str) or isinstance(user.uid, unicode)):
             self.__syspath = app.config['USER_HOME_PATH']
@@ -62,56 +62,58 @@ class UserDataService(object):
     
     @property
     def es_service(self):
-        ''' Get ElasticSearch service instance '''
+        """ Get ElasticSearch service instance """
         return self.__es_service
     
     @property
     def bulk_insert_url(self):
-        ''' Get bulk insert url '''
+        """ Get bulk insert url """
         return self.__bulk_insert_url
     
     @property
     def settings_url(self):
-        ''' Get settings url '''
+        """ Get settings url """
         return self.__settings_url
     
     @property
     def count_url(self):
-        ''' Get count url '''
+        """ Get count url """
         return self.__count_url
     
     @property
     def user(self):
-        ''' Get user '''
+        """ Get user """
         return self.__user
     
     @property
     def path(self):
-        ''' Get path '''
+        """ Get path """
         return self.__path
     
     @path.setter
     def path(self, value):
-        ''' Set path '''
+        """ Set path """
         self.__path = value
         
     @property
     def idx_name(self):
-        ''' Get index name '''
+        """ Get index name """
         return self.__idx_name
         
     @property
     def syspath(self):
-        ''' Get full system path '''
+        """ Get full system path """
         return self.__syspath
     
     @syspath.setter
     def syspath(self, value):
-        ''' Set full system path '''
+        """ Set full system path """
         self.__syspath = value
     
     def find_all_folders(self, folder=None):
-        ''' Find all folders for user, do not return symlinks '''
+        """ 
+        Find all folders for user, do not return symlinks 
+        """
         if folder == None:
             cmd = u'find "{path}" -type d | sed "s#{syspath}##"'.format(
                 path = self.path,
@@ -143,7 +145,9 @@ class UserDataService(object):
         return folders
     
     def find_folder_folders(self, folder):
-        ''' Find all folders for given folder, but do not return symlinks '''
+        """ 
+        Find all folders for given folder, but do not return symlinks 
+        """
         cmd = u'find "{path}" -maxdepth 1 -type d | sed "s#.*/##"'.format(
             path = folder.sys_path
         )
@@ -165,10 +169,10 @@ class UserDataService(object):
         return folders
     
     def index_folders_and_files(self, folder=None):
-        '''
-        Find all folders for the user. Path to the folder is urlencoded and
+        """
+        Find all folders for the user. Path to the folder is url encoded and
         assigned as a id for the Folder type in the ElasticSearch index.
-        '''
+        """
         items_indexed = 0
         folders = self.find_all_folders(folder)
         folder_bulk = []
@@ -190,7 +194,7 @@ class UserDataService(object):
         return items_indexed
     
     def index_files(self, folder):
-        ''' Index the files in folder '''
+        """ Index the files in folder """
         folder_instance = Folder.get_instance(folder['path'])
         folder_files = folder_instance.files
         file_bulk = []
@@ -209,13 +213,13 @@ class UserDataService(object):
         return len(file_bulk)
         
     def build_index(self):
-        ''' 
+        """ 
         Build a new index, steps involved are:
         Create/Overwrite index
         Add folders to index
         Add files to index
         Flush index when done
-        '''
+        """
         app.logger.debug(u'Start building index for {uid}'.format(uid=self.user.uid))
         result = self.es_service.create_index(
             self.user.uid, data=self.get_index_metadata(), overwrite=True)
@@ -242,13 +246,13 @@ class UserDataService(object):
         app.logger.info(msg)
     
     def get_index_metadata(self):
-        ''' 
+        """ 
         Metadata index for a user
         Compress ratio is about 2.0 for this kind of data.
         
         One replica and two shards should be good enough for this use case.
         That's why it's hard coded for now.
-        '''
+        """
         return {
             "settings": {
                 "index": {
@@ -290,7 +294,7 @@ class UserDataService(object):
             }
         }
     def find_by_parent_id(self, parent_id):
-        ''' Return document ids by parent id '''
+        """ Return document ids by parent id """
         max_size = int(self.es_service.conn.get(self.count_url, data={
             "query": {
                 "bool": {
@@ -322,10 +326,10 @@ class UserDataService(object):
         return [ doc['_id'] for doc in results['hits']['hits'] ]
         
     def delete_document_by_parent_id(self, document_id):
-        ''' 
+        """ 
         Deletes documents from ES by id string argument, delete nodes
         that has the id as parent. 
-        '''
+        """
         ids_to_delete = self.find_by_parent_id(document_id)
         del_url = '{idx_name}/node/_query'.format(idx_name=self.idx_name)
         result = self.es_service.conn.delete(del_url, data={
@@ -339,7 +343,7 @@ class UserDataService(object):
         return ids_to_delete
         
     def delete_document_by_id(self, document_id):
-        ''' Deletes documents from ES by id string argument '''
+        """ Deletes documents from ES by id string argument """
         del_url = '{idx_name}/node/{id}'.format(
             idx_name=self.idx_name,
             id=uenc(document_id)) # dual url encoding as ES decodes it
@@ -353,7 +357,7 @@ class UserDataService(object):
             return document_id
             
     def index_document_by_node(self, node):
-        ''' Index a node by supplying a node argument '''
+        """ Index a node by supplying a node argument """
         if isinstance(node, Node):
             if node.type == Node.FILE_TYPE:
                 size = node.get_size()
@@ -382,7 +386,7 @@ class UserDataService(object):
             raise TypeError(u'node is not of type domain.node.Node')
     
     def do_folder_sync(self, node_id):
-        '''
+        """
         Pass a folder_id, read it from disk and the ES index. Compare its
         content and files and return the correct results based what is stored
         on disk.
@@ -390,7 +394,7 @@ class UserDataService(object):
         We do two queries, first to find total hits and then use total hits
         to do the second query. The reason for this is that a huge size value
         decrease Elasticsearch query performance by a huge margin.
-        '''
+        """
         folder = Folder.get_instance(node_id, decode=True)
         if folder:
             index_id = uenc(folder.path.encode('utf-8'))
@@ -438,12 +442,12 @@ class UserDataService(object):
             ))
             
     def do_full_sync(self):
-        '''
+        """
         Do a full sync of the user filesystem. Find all folders from the
         user's filesystem compare them one by one. Then fetch all folders in
         ES and compare them for a cleanup. In case some folders have been 
         renamed.
-        '''
+        """
         self.disable_realtime_indexing()
         disk_folders = Folder.find_all_folders(self.user)
         es_data = {"docs":[]}
@@ -514,18 +518,18 @@ class UserDataService(object):
         self.flush_index()
         
     def flush_index(self):
-        '''
+        """
         The flush process of an index basically frees memory from the index by
         flushing data to the index storage and clearing the internal
         transaction log. By default, ElasticSearch uses memory heuristics in
         order to automatically trigger flush operations as required in order
         to clear memory.
-        '''
+        """
         url = '{idx_name}/_flush'.format(idx_name=self.idx_name)
         self.es_service.conn.post(url, data={})
         
     def optimize_index(self):
-        '''
+        """
         The optimize process basically optimizes the index for faster search 
         operations (and relates to the number of segments a lucene index holds
         within each shard).
@@ -535,24 +539,24 @@ class UserDataService(object):
         deleted. During a merge process of segments, a new segment is created
         that does not have those deletes. This flag allow to only merge 
         segments that have deletes.
-        '''
+        """
         url = '{idx_name}/_optimize?only_expunge_deletes=true'.format(
             idx_name = self.idx_name)
         self.es_service.conn.post(url, data={})
         
     def disable_realtime_indexing(self):
-        ''' 
+        """ 
         Increase the refresh interval to disable realtime indexing
-        '''
+        """
         self.es_service.conn.put(self.settings_url, data={
             "index": {
                 "refresh_interval" : "120s"
             }
         })
     def enable_realtime_indexing(self):
-        ''' 
+        """ 
         Decrease the refresh interval to enable realtime indexing
-        '''
+        """
         self.es_service.conn.put(self.settings_url, data={
             "index": {
                 "refresh_interval" : "1s"
@@ -561,7 +565,7 @@ class UserDataService(object):
     
     @staticmethod
     def index_all_users():
-        ''' Static method for indexing all folders and files for all users '''
+        """ Static method for indexing all folders and files for all users """
         users = User.get_users()
         for user in users:
             try:
@@ -572,7 +576,7 @@ class UserDataService(object):
     
     @staticmethod
     def sync_all_users():
-        ''' Static method for syncing all folders and files for all users '''
+        """ Static method for syncing all folders and files for all users """
         users = User.get_users()
         for user in users:
             try:
@@ -582,7 +586,7 @@ class UserDataService(object):
         return len(users)
 
 def build_process(values):
-    ''' Task/process function '''
+    """ Task/process function """
     user = values.get('user')
     if user:
         service = UserDataService(user)
@@ -590,7 +594,7 @@ def build_process(values):
         app.logger.info('Index built for user: {uid}.'.format(uid=user.uid))
         
 def full_sync_process(values):
-    ''' Task/process function '''
+    """ Task/process function """
     user = values.get('user')
     if user:
         service = UserDataService(user)
@@ -598,7 +602,7 @@ def full_sync_process(values):
         app.logger.info('Full sync for {uid} done.'.format(uid=user.uid))
         
 def folder_sync_process(values):
-    ''' Task/process function '''
+    """ Task/process function """
     user = values.get('user')
     node_id = values.get('node_id')
     if user and node_id:
