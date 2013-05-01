@@ -48,16 +48,6 @@ def with_http_auth(func):
         auth_header_name = app.config["AUTH_TOKEN_HEADER_NAME"]
         # Check HTTP Header
         headers = [unicode(i) for i in request.headers.keys()]
-        app.logger.info(auth_header_name in headers)
-        for item in headers:
-            app.logger.info( item )
-            app.logger.info( type(item))
-            if item == u"Sth-key":
-                app.logger.info( item )
-                app.logger.info( type(item))
-                app.logger.info( auth_header_name)
-                app.logger.info( type(auth_header_name))
-
         if (auth_header_name in headers
                 and request.headers.get(auth_header_name) == auth_token):
             return func(*args, **kwargs)

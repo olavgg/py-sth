@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,7 +22,7 @@ SOFTWARE.
 Created on Jan 8, 2013
 
 @Author: Olav Groenaas Gjerde
-'''
+"""
 from multiprocessing import Process
 from multiprocessing import JoinableQueue
 from multiprocessing import Manager
@@ -31,17 +31,18 @@ from Queue import Empty
 
 from domain.user import User
 
+
 class TaskService(object):
-    ''' 
+    """
     Asynchronous tasks class for storing tasks into a queue so only one
     process can be run concurrently.
-    '''
+    """
     tasks = None
     work_queue = None
 
     def __init__(self, func, **values):
-        ''' Constructor '''
-        if TaskService.tasks == None:
+        """ Constructor """
+        if TaskService.tasks is None:
             TaskService.tasks = Manager().dict()
             TaskService.work_queue = JoinableQueue()
         if 'user' not in values:
@@ -56,41 +57,44 @@ class TaskService(object):
         TaskService.tasks[self.name] = self
         TaskService.work_queue.put(self.name)
         from flask import current_app as app
+
         max_p = app.config['MAX_PROCESSES']
-        if len([1 for v in active_children() if isinstance(v,Worker)]) < max_p:
+        if len([1 for v in active_children() if isinstance(v, Worker)]) < max_p:
             worker = Worker(TaskService.work_queue, wait=values['wait'])
             worker.start()
-        
+
     def __str__(self):
-        ''' Return the task name '''
+        """ Return the task name """
         return self.name
-        
+
     def remove(self):
-        ''' Delete the Task '''
-        del(TaskService.tasks[self.name])
-        del(self)
-        
+        """ Delete the Task """
+        del (TaskService.tasks[self.name])
+        del self
+
     @staticmethod
     def find_task_by_name(name):
-        ''' Find task by name '''
-        task = [val for key,val in TaskService.tasks.items() if key == name]
+        """ Find task by name """
+        task = [val for key, val in TaskService.tasks.items() if key == name]
         if task:
             return task[0]
         return None
-        
+
+
 class Worker(Process):
-    ''' Worker class '''
-    
+    """ Worker class """
+
     def __init__(self, work_queue, wait=False):
-        ''' Constructor '''
+        """ Constructor """
         Process.__init__(self)
         self.w_queue = work_queue
         self.kill_received = False
         self.wait = wait
 
     def run(self):
-        ''' Executes a worker '''
+        """ Executes a worker """
         while not self.kill_received:
+            task = None
             try:
                 name = self.w_queue.get(block=self.wait, timeout=3)
                 task = TaskService.find_task_by_name(name)

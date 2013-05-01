@@ -40,20 +40,24 @@ from services.user_data_service import folder_sync_process
 from domain.user import User
 
 PAGE = Blueprint('es_page', __name__)
-
+USER_ERROR_MSG = u"User {u} home folder doesn't exist."
 
 @PAGE.route("/es", methods=['GET', 'POST'])
 @with_http_auth
 def index():
-    """ Show status """
+    """
+    Show status
+    """
     es_service = EsService()
     return jsonify(es_service.get_status())
 
 
 @PAGE.route("/es/<uid>", methods=['GET', 'POST'])
 @with_http_auth
-def listall(uid):
-    """ List data from the specified user """
+def list_all(uid):
+    """
+    List data from the specified user
+    """
     user = User.get(uid)
     data = UserDataService(user).find_all_folders()
     return jsonify(data)
@@ -77,13 +81,15 @@ def build(uid):
             return jsonify(dict(error='job is already running')), 200
         data = dict(status='job created')
         return jsonify(data), 201
-    abort(404)
+    abort(404, USER_ERROR_MSG.format(u=uid))
 
 
 @PAGE.route("/es/build/all/", methods=['GET', 'POST'])
 @with_http_auth
 def build_all():
-    """ Build new index for all users """
+    """
+    Build new index for all users
+    """
     total = UserDataService.index_all_users()
 
     data = dict(status='ok',
@@ -96,21 +102,25 @@ def build_all():
 @disallow_special_characters
 @with_http_auth
 def create(uid):
-    """ Create new index for the specified user"""
+    """
+    Create new index for the specified user
+    """
     user = User.get(uid)
     if user:
         return jsonify(EsService().create_index(user.uid, overwrite=True))
-    abort(404)
+    abort(404, USER_ERROR_MSG.format(u=uid))
 
 @PAGE.route("/es/destroy/<uid>/", methods=['GET', 'POST'])
 @disallow_special_characters
 @with_http_auth
 def destroy_idx(uid):
-    """ Create new index for the specified user"""
+    """
+    Destroy index for the specified user
+    """
     user = User.get(uid)
     if user:
         return jsonify(EsService().destroy_index(user.uid))
-    abort(404)
+    abort(404, USER_ERROR_MSG.format(u=uid))
 
 @PAGE.route("/es/sync/all/", methods=['GET', 'POST'])
 @with_http_auth
@@ -142,7 +152,7 @@ def sync_uid(uid):
             return jsonify(dict(error='job is already running')), 200
         data = dict(status='job created')
         return jsonify(data), 201
-    abort(404)
+    abort(404, USER_ERROR_MSG.format(u=uid))
 
 
 @PAGE.route("/es/sync/<string:uid>/<string:node_id>", methods=['GET', 'POST'])
@@ -161,4 +171,4 @@ def sync_folder(uid, node_id):
             return jsonify(dict(error='job is already running')), 200
         data = dict(status='job created')
         return jsonify(data), 201
-    abort(404)
+    abort(404, USER_ERROR_MSG.format(u=uid))
