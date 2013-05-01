@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,7 +22,7 @@ SOFTWARE.
 Created on Dec 30, 2012
 
 @Author: Olav Groenaas Gjerde
-'''
+"""
 
 from external_projects import rawes
 from requests import ConnectionError
@@ -30,43 +30,53 @@ import json
 
 from flask import current_app as app
 
+
 class EsService(object):
-    ''' Handles connecting to a ElasticSearch cluster and data manipulation '''
-    
+    """ Handles connecting to a ElasticSearch cluster and data manipulation """
+
     current_connection = None
 
     def __init__(self):
-        ''' 
-        Hard coded connection for now. Elasticsearch supports loadbalancing 
+        """
+        Hard coded connection for now. ElasticSearch supports load balancing
         with the option to set node.data to false. Read more on
         www.elasticsearch.org/guide/reference/modules/node.html
-        '''
+        """
         try:
             es_server = 'es01:9200'
             self.conn = rawes.Elastic(es_server)
-            if self.conn == None:
+            if self.conn is None:
                 es_server = 'es02:9200'
                 self.conn = rawes.Elastic(es_server)
-                if self.conn == None:
-                    raise ConnectionError("Couldn't connect to %s"%(es_server))
+                if self.conn is None:
+                    raise ConnectionError(
+                        u"Couldn't connect to %s" % es_server)
         except ConnectionError as err:
             app.logger.exception(str(err))
         EsService.current_connection = self
-        
+
     @staticmethod
     def get_instance():
-        if EsService.current_connection == None:
+        """
+         Returns a new ElasticSearch connection instance
+        """
+        if EsService.current_connection is None:
             return EsService()
         return EsService.current_connection
-            
+
     def get_status(self):
+        """
+        Get connection status to ES
+        """
         return self.conn.get('')
-            
-    def create_index(self, name, data=dict(), overwrite=False):
-        ''' 
+
+    def create_index(self, name, data=None, overwrite=False):
+        """
         Create index , overwrite if a third argument/overwrite with value true
         is passed. Index name is automatically lower cased.
-        '''
+        """
+        if not data:
+            data = dict()
         name = name.lower()
         if overwrite:
             idx_exists = self.conn.head(name)
@@ -74,31 +84,45 @@ class EsService(object):
                 self.conn.delete(name)
         result = self.conn.put(name, data=data)
         if result['status'] != 200:
-            app.logger.error("Couldn't create index")
+            app.logger.error(u"Couldn't create index")
         return result
-    
+
     def bulk_insert(self, path, data, bulk_size=8000):
-        ''' 
-        Bulk insert data to elasticsearch, default size of bulk_size is 8000
-        '''
+        """
+        Bulk insert data to ElasticSearch, default size of bulk_size is 8000
+        """
         counter = 0
-        dbuf = []
+        data_buffer = []
         for item in data:
             if counter == bulk_size:
-                self.__do_bulk_insert(path, dbuf)
+                self.__do_bulk_insert(path, data_buffer)
                 counter = 0
-                dbuf = []
-            dbuf.append(item)
+                data_buffer = []
+            data_buffer.append(item)
             counter += 1
-        if dbuf:
-            self.__do_bulk_insert(path, dbuf)
-            
+        if data_buffer:
+            self.__do_bulk_insert(path, data_buffer)
+
     def __do_bulk_insert(self, path, databulk):
-        ''' Private function that does the actual bulk insert to ES '''
-        bdata = '\n'.join([json.dumps(bdat) for bdat in databulk])+'\n'
-        result = self.conn.post(path, data=bdata)
+        """
+        Private function that does the actual bulk insert to ES
+        """
+        data_buffer = '\n'.join([json.dumps(bdat) for bdat in databulk]) + '\n'
+        result = self.conn.post(path, data=data_buffer)
         if result['status'] != 200:
             app.logger.error(str(result))
-            app.logger.error(bdata)
-            app.logger.error("Couldn't do bulk insert")
-            
+            app.logger.error(data_buffer)
+            app.logger.error(u"Couldn't do bulk insert")
+
+    def destroy_index(self, name):
+        """
+        Destroy Index
+        """
+        name = name.lower()
+        idx_exists = self.conn.head(name)
+        if idx_exists:
+            result = self.conn.delete(name)
+            if result['status'] != 200:
+                app.logger.error(u"Couldn't destroy ES index")
+            return result
+        return dict(error=u'Index not found')

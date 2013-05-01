@@ -102,6 +102,15 @@ def create(uid):
         return jsonify(EsService().create_index(user.uid, overwrite=True))
     abort(404)
 
+@PAGE.route("/es/destroy/<uid>/", methods=['GET', 'POST'])
+@disallow_special_characters
+@with_http_auth
+def destroy_idx(uid):
+    """ Create new index for the specified user"""
+    user = User.get(uid)
+    if user:
+        return jsonify(EsService().destroy_index(user.uid))
+    abort(404)
 
 @PAGE.route("/es/sync/all/", methods=['GET', 'POST'])
 @with_http_auth
