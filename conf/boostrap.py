@@ -23,8 +23,8 @@ Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
 """
+from jobs.fs_watcher import FSWatcher
 
-from services.user_data_service import UserDataService
 from services.user_service import UserService
 from flask import current_app as app
 
@@ -52,16 +52,18 @@ class Bootstrap(object):
     @staticmethod
     def init_dev_data():
         """ Init dev data """
-        UserService.find_users_in_home_path()
+        UserService.sync_users()
+        FSWatcher()
+        #UserService.find_users_in_home_path()
 
     @staticmethod
     def init_test_data():
         """ Init test data """
-        UserService.find_users_in_home_path()
+        UserService.sync_users()
 
     @staticmethod
     def init_prod_data():
         """ Init prod data """
-        UserService.find_users_in_home_path()
+        UserService.sync_users()
+        FSWatcher()
         #UserDataService.index_all_users()
-        UserDataService.sync_all_users()

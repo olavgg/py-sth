@@ -23,6 +23,7 @@ Created on Jan 2, 2013
 
 @Author: Olav Groenaas Gjerde
 """
+import warnings
 
 from flask import Blueprint
 from flask import jsonify
@@ -41,6 +42,7 @@ from domain.user import User
 
 PAGE = Blueprint('es_page', __name__)
 USER_ERROR_MSG = u"User {u} home folder doesn't exist."
+
 
 @PAGE.route("/es", methods=['GET', 'POST'])
 @with_http_auth
@@ -103,24 +105,33 @@ def build_all():
 @with_http_auth
 def create(uid):
     """
-    Create new index for the specified user
+    Create new index for the specified user.
+    :param uid:
     """
+    warnings.warn(("This function shouldn't be used, instead this application "
+                   "should automatically find the new filesystem and create "
+                   "the index for it."), DeprecationWarning)
     user = User.get(uid)
     if user:
         return jsonify(EsService().create_index(user.uid, overwrite=True))
     abort(404, USER_ERROR_MSG.format(u=uid))
+
 
 @PAGE.route("/es/destroy/<uid>/", methods=['GET', 'POST'])
 @disallow_special_characters
 @with_http_auth
 def destroy_idx(uid):
     """
-    Destroy index for the specified user
+    Destroy index for the specified user.
     """
+    warnings.warn(("This function shouldn't be used, instead this application "
+                   "should automatically find the deleted filesystem and "
+                   "destroy its index."), DeprecationWarning)
     user = User.get(uid)
     if user:
         return jsonify(EsService().destroy_index(user.uid))
     abort(404, USER_ERROR_MSG.format(u=uid))
+
 
 @PAGE.route("/es/sync/all/", methods=['GET', 'POST'])
 @with_http_auth

@@ -49,6 +49,7 @@ class EsService(object):
                 es_server = 'es02:9200'
                 self.conn = rawes.Elastic(es_server)
                 if self.conn is None:
+                    # noinspection PyExceptionInherit
                     raise ConnectionError(
                         u"Couldn't connect to %s" % es_server)
         except ConnectionError as err:

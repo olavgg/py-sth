@@ -59,10 +59,12 @@ class Config(object):
     DATE_FORMAT = u'%Y-%m-%d %H:%M'
     # Max number of multi-processes to run concurrently
     # This will most likely be limited by IOPS, not CPU
-    MAX_PROCESSES = 4
+    # Filesystem watcher needs 2 processes that runs at all time
+    # for home and temp filesystems. 6 processes is a good number.
+    MAX_PROCESSES = 6
     # The interval to do a full sync of users folder. Should most likely be
     # adjusted to do a full sync by predicting user behaviour.
-    SYNC_INTERVAL = 3600 * 24
+    SYNC_INTERVAL = 3600
 
     @staticmethod
     def set_app_password(password):
