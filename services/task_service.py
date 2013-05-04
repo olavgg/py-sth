@@ -28,6 +28,7 @@ from multiprocessing import JoinableQueue
 from multiprocessing import Manager
 from multiprocessing import active_children
 from Queue import Empty
+from time import sleep
 
 from domain.user import User
 
@@ -49,7 +50,11 @@ class TaskService(object):
             values['user'] = User('admin', mock=True)
         if 'wait' not in values:
             values['wait'] = False
-        self.name = '{f},{u}'.format(f=func.__name__, u=values['user'].uid)
+        if 'function_name' in values:
+            self.name = '{f}'.format(
+                f=values['function_name'], u=values['user'].uid)
+        else:
+            self.name = '{f},{u}'.format(f=func.__name__, u=values['user'].uid)
         if TaskService.find_task_by_name(self.name):
             raise ValueError('Task {n} already exists'.format(n=self.name))
         self.func = func
@@ -57,7 +62,7 @@ class TaskService(object):
         TaskService.tasks[self.name] = self
         TaskService.work_queue.put(self.name)
         from flask import current_app as app
-
+        app.logger.debug("Added process: {name}".format(name=self.name))
         max_p = app.config['MAX_PROCESSES']
         if len([1 for v in active_children() if isinstance(v, Worker)]) < max_p:
             worker = Worker(TaskService.work_queue, wait=values['wait'])
@@ -88,12 +93,11 @@ class Worker(Process):
         """ Constructor """
         Process.__init__(self)
         self.w_queue = work_queue
-        self.kill_received = False
         self.wait = wait
 
     def run(self):
         """ Executes a worker """
-        while not self.kill_received:
+        while True:
             task = None
             try:
                 name = self.w_queue.get(block=self.wait, timeout=3)

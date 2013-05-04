@@ -51,14 +51,14 @@ class UserService(object):
         """
         home_path = app.config['USER_HOME_PATH']
         temp_path = app.config['USER_TEMP_PATH']
-        users = set([o for o in os.listdir(home_path) if (
+        users = [o for o in os.listdir(home_path) if (
             os.path.isdir(home_path + '/' + o) and not
-            os.path.islink(home_path + '/' + o))])
-        users += set([o for o in os.listdir(temp_path) if (
+            os.path.islink(home_path + '/' + o))]
+        users += [o for o in os.listdir(temp_path) if (
             os.path.isdir(temp_path + '/' + o) and not
-            os.path.islink(temp_path + '/' + o))])
-        new_users = users - set(User.users.keys())
-        deleted_users = set(User.users.keys()) - users
+            os.path.islink(temp_path + '/' + o))]
+        new_users = set(users) - set(User.users.keys())
+        deleted_users = set(User.users.keys()) - set(users)
         for user in new_users:
             user_obj = User(user)
             service = UserDataService(user_obj)

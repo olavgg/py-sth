@@ -23,76 +23,55 @@ Created on May 4, 2013
 
 @Author: Olav Groenaas Gjerde
 """
-import time
-import logging
-import os
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from flask import current_app as app
-from services.task_service import TaskService
 
 
 class FSWatcher(object):
     def __init__(self):
         """
-        Creates a start the filesystem watch process
+        Watch two folders
         """
-        try:
-            TaskService(start_watchdog, parentID=os.getppid(), user='home')
-            TaskService(start_watchdog, parentID=os.getppid(), user='temp')
-        except ValueError, error:
-            app.logger.error(error)
-
-
-def start_watchdog(values):
-    """
-    Start the watchdog process
-    """
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')
-    event_handler = FSEventHandler()
-    observer = Observer()
-    if values.get('user') == 'home':
-        observer.schedule(
-            event_handler, app.config['USER_HOME_PATH'], recursive=False)
-    elif values.get('user') == 'temp':
-        observer.schedule(
-            event_handler, app.config['USER_TEMP_PATH'], recursive=False)
-    observer.start()
-    if os.getppid() != values.get('parentID'):
-        time.sleep(1)
-    observer.stop()
-    observer.join()
+        event_handler = FSEventHandler()
+        observer1 = Observer()
+        folder = app.config['USER_HOME_PATH']
+        observer1.schedule(event_handler, folder, recursive=False)
+        app.logger.info(u"Watching folder: {f}".format(f=folder))
+        observer2 = Observer()
+        folder = app.config['USER_TEMP_PATH']
+        observer2.schedule(event_handler, folder, recursive=False)
+        app.logger.info(u"Watching folder: {f}".format(f=folder))
+        observer1.start()
+        observer2.start()
 
 
 class FSEventHandler(FileSystemEventHandler):
     """
     Handles all the events captured.
     """
+    def __init__(self):
+        FileSystemEventHandler.__init__(self)
+        self.app = app._get_current_object()
 
     def on_moved(self, event):
         super(FSEventHandler, self).on_moved(event)
-
         what = 'directory' if event.is_directory else 'file'
-        app.logger.info("Moved %s: from %s to %s", what, event.src_path,
-                        event.dest_path)
+        self.app.logger.info ("Moved %s: from %s to %s", what, event.src_path,
+               event.dest_path)
 
     def on_created(self, event):
         super(FSEventHandler, self).on_created(event)
-
         what = 'directory' if event.is_directory else 'file'
-        app.logger.info("Created %s: %s", what, event.src_path)
+        self.app.logger.info("Created %s: %s", what, event.src_path)
 
     def on_deleted(self, event):
         super(FSEventHandler, self).on_deleted(event)
-
         what = 'directory' if event.is_directory else 'file'
         app.logger.info("Deleted %s: %s", what, event.src_path)
 
     def on_modified(self, event):
         super(FSEventHandler, self).on_modified(event)
-
         what = 'directory' if event.is_directory else 'file'
-        app.logger.info("Modified %s: %s", what, event.src_path)
+        self.app.logger.info("Modified %s: %s", what, event.src_path)

@@ -35,6 +35,7 @@ from flask import Flask
 
 from conf.boostrap import Bootstrap
 from conf.base import Base
+from services.task_service import TaskService
 
 
 class PYSTHClient(object):
