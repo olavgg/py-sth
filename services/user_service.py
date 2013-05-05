@@ -51,21 +51,22 @@ class UserService(object):
         """
         home_path = app.config['USER_HOME_PATH']
         temp_path = app.config['USER_TEMP_PATH']
-        users = [o for o in os.listdir(home_path) if (
+        users = [(o, False) for o in os.listdir(home_path) if (
             os.path.isdir(home_path + '/' + o) and not
             os.path.islink(home_path + '/' + o))]
-        users += [o for o in os.listdir(temp_path) if (
+        users += [(o, True) for o in os.listdir(temp_path) if (
             os.path.isdir(temp_path + '/' + o) and not
             os.path.islink(temp_path + '/' + o))]
         new_users = set(users) - set(User.users.keys())
         deleted_users = set(User.users.keys()) - set(users)
         for user in new_users:
-            user_obj = User(user)
+            user_obj = User(user[0], anonymous=user[1])
             service = UserDataService(user_obj)
             service.build_index()
-            app.logger.info(u"Added user: {u}.".format(u=user))
+            app.logger.info(u"Added user: {u}. Is anonymous: {isAno}"
+                            .format(u=user[0], isAno=user[1]))
         for user in deleted_users:
-            service = UserDataService(User.get(user))
+            service = UserDataService(User.get(user[0]))
             service.destroy_index()
-            del User.users[user]
-            app.logger.info(u"Deleted user: {u}.".format(u=user))
+            del User.users[user[0]]
+            app.logger.info(u"Deleted user: {u}.".format(u=user[0]))

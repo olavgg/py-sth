@@ -23,7 +23,8 @@ Created on Dec 11, 2012
 
 @Author: Olav Groenaas Gjerde
 """
-from flask import current_app as app
+from flask import current_app
+
 
 class User(object):
     """User object"""
@@ -31,41 +32,58 @@ class User(object):
 
     def __init__(self, uid, mock=False, anonymous=False):
         """Constructor"""
-        self._uid = uid
+        app = current_app._get_current_object()
+        self.__uid = uid
         if anonymous is True:
-            self._path = app.config['USER_HOME_PATH']
+            self.__path = app.config['USER_HOME_PATH']
+            self.__anonymous = True
         else:
-            self._path = app.config['USER_TEMP_PATH']
-        if mock == False:
+            self.__path = app.config['USER_TEMP_PATH']
+            self.__anonymous = False
+        if mock is False:
             User.users[uid] = self
             app.logger.info(u'Added user: ' + uid)
 
     def __str__(self):
-        return self._uid
-    
+        return self.__uid
+
     @staticmethod
     def get_users_as_dict():
         """ Return all users as dictionary """
         return dict(users=User.get_users())
-    
+
     @staticmethod
     def get_users():
         """ Return all users as list """
         return User.users.values()
-    
+
     @staticmethod
     def get(uid):
         """ Find user by uid, return None if not found """
         if uid in User.users:
-            return  User.users[uid]
+            return User.users[uid]
         return None
-        
+
     @property
     def uid(self):
         """ Get uid """
-        return self._uid
-    
+        return self.__uid
+
     @uid.setter
     def uid(self, value):
         """ Set uid """
-        self._uid = value
+        self.__uid = value
+
+    @property
+    def path(self):
+        """ Get path """
+        return self.__path
+
+    @path.setter
+    def path(self, value):
+        """ Set path """
+        self.__path = value
+
+    def isAnonymous(self):
+        """ Get path """
+        return self.__anonymous

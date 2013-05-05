@@ -49,11 +49,14 @@ class Node(object):
         self.__type = values['type']
 
     @staticmethod
-    def get_instance(path, decode=False, node_type=None):
+    def get_instance(path, decode=False, node_type=None, user=None):
         """ Create node meta-data by reading it from disk """
         if decode:
             path = unquote_plus(path)
-        disk_path = app.config['USER_HOME_PATH'] + path
+        if user and user.isAnonymous():
+            disk_path = app.config['USER_TEMP_PATH'] + path
+        else:
+            disk_path = app.config['USER_HOME_PATH'] + path
         if os.path.exists(disk_path):
             if os.path.isfile(disk_path):
                 node_type = Node.FILE_TYPE

@@ -1,4 +1,4 @@
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,7 +22,7 @@ SOFTWARE.
 Created on Dec 23, 2012
 
 @Author: Olav Groenaas Gjerde
-'''
+"""
 import os
 import datetime
 from urllib import unquote_plus
@@ -31,23 +31,27 @@ from flask import current_app as app
 
 from domain.node import Node
 
+
 class File(Node):
-    ''' File class '''
+    """ File class """
 
     def __init__(self, values):
-        ''' Constructor '''
+        """ Constructor """
         Node.__init__(self, values)
         self.__parent = Node.get_instance(self.get_parent())
         self.__size = values['size']
         
     @staticmethod
-    def get_instance(path, decode=False):
-        ''' Create file meta-data by reading it from disk '''
+    def get_instance(path, decode=False, node_type=Node.FILE_TYPE, user=None):
+        """ Create file meta-data by reading it from disk """
         if decode:
             path = unquote_plus(path)
-        disk_path = app.config['USER_HOME_PATH'] + path
+        if user and user.isAnonymous():
+            disk_path = app.config['USER_TEMP_PATH'] + path
+        else:
+            disk_path = app.config['USER_HOME_PATH'] + path
         app.logger.debug(disk_path)
-        if os.path.exists(disk_path) == True:
+        if os.path.exists(disk_path):
             date_modified = datetime.datetime.fromtimestamp(
                 os.path.getmtime(disk_path)).strftime(app.config['DATE_FORMAT'])
             values = {
@@ -65,12 +69,12 @@ class File(Node):
     
     @property
     def size(self):
-        ''' Get size '''
+        """ Get size """
         return self.__size
     
     @size.setter
     def size(self, value):
-        ''' Set size '''
+        """ Set size """
         if isinstance(value,int) or isinstance(value,long):
             self.__size = Node.sizeof_fmt(value)
         else:
@@ -78,12 +82,12 @@ class File(Node):
     
     @property
     def parent(self):
-        ''' Get parent '''
+        """ Get parent """
         return self.__parent
     
     @parent.setter
     def parent(self, value):
-        ''' Set folder / parent that the file belongs to '''
+        """ Set folder / parent that the file belongs to """
         if isinstance(value, Node):
             self.__parent = value
         else:

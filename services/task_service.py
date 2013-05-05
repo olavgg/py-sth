@@ -28,7 +28,6 @@ from multiprocessing import JoinableQueue
 from multiprocessing import Manager
 from multiprocessing import active_children
 from Queue import Empty
-from time import sleep
 
 from domain.user import User
 

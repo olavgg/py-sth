@@ -27,6 +27,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from flask import current_app as app
+from domain.user import User
+from services.user_data_service import UserDataService
 
 
 class FSWatcher(object):
@@ -34,7 +36,7 @@ class FSWatcher(object):
         """
         Watch two folders
         """
-        event_handler = FSEventHandler()
+        event_handler = BackupBayFSEventHandler()
         observer1 = Observer()
         folder = app.config['USER_HOME_PATH']
         observer1.schedule(event_handler, folder, recursive=False)
@@ -47,31 +49,79 @@ class FSWatcher(object):
         observer2.start()
 
 
-class FSEventHandler(FileSystemEventHandler):
+class BackupBayFSEventHandler(FileSystemEventHandler):
     """
     Handles all the events captured.
     """
     def __init__(self):
+        """
+        Constructor
+        :return:
+        """
         FileSystemEventHandler.__init__(self)
         self.app = app._get_current_object()
 
-    def on_moved(self, event):
-        super(FSEventHandler, self).on_moved(event)
-        what = 'directory' if event.is_directory else 'file'
-        self.app.logger.info ("Moved %s: from %s to %s", what, event.src_path,
-               event.dest_path)
-
     def on_created(self, event):
-        super(FSEventHandler, self).on_created(event)
+        """
+        When something is created in a watched folder, this event executes.
+        :param event:
+        :return:
+        """
+        super(BackupBayFSEventHandler, self).on_created(event)
         what = 'directory' if event.is_directory else 'file'
         self.app.logger.info("Created %s: %s", what, event.src_path)
+        self.__handle_created_event(event.src_path)
 
     def on_deleted(self, event):
-        super(FSEventHandler, self).on_deleted(event)
+        """
+        When something is deleted in a watched folder, this event executes.
+        :param event:
+        :return:
+        """
+        super(BackupBayFSEventHandler, self).on_deleted(event)
         what = 'directory' if event.is_directory else 'file'
-        app.logger.info("Deleted %s: %s", what, event.src_path)
+        self.app.logger.info("Deleted %s: %s", what, event.src_path)
+        self.__handle_deleted_event(event.src_path)
 
-    def on_modified(self, event):
-        super(FSEventHandler, self).on_modified(event)
-        what = 'directory' if event.is_directory else 'file'
-        self.app.logger.info("Modified %s: %s", what, event.src_path)
+    def __handle_created_event(self, folder):
+        """
+        Creates an index by finding the name of the new filesystem
+        :param folder:
+        :return:
+        """
+        username, isAnonymous = self.__handle_event(folder)
+        with self.app.app_context():
+            user = User(username, anonymous=isAnonymous)
+            user_service = UserDataService(user)
+            user_service.build_index()
+
+    def __handle_deleted_event(self, folder):
+        """
+        Destroys the index by finding the name of the deleted filesystem
+        :param folder:
+        :return:
+        """
+        username, isAnonymous = self.__handle_event(folder)
+        with self.app.app_context():
+            user = User.get(username)
+            user_service = UserDataService(user)
+            user_service.destroy_index()
+            del User.users[username]
+
+    def __handle_event(self, folder):
+        """
+        Find and return the name of the new filesystem, based on path the
+        event occurred we
+        :param folder:
+        :return tuple(str, boolean):
+        """
+        home_folder = self.app.config['USER_HOME_PATH']
+        temp_folder = self.app.config['USER_TEMP_PATH']
+        username = u''
+        isAnonymous = False
+        if folder.find(temp_folder) == 0:
+            username = folder[len(temp_folder)+1:]
+            isAnonymous = True
+        elif folder.find(home_folder) == 0:
+            username = folder[len(home_folder)+1:]
+        return username, isAnonymous

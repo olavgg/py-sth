@@ -125,5 +125,7 @@ class EsService(object):
             result = self.conn.delete(name)
             if result['status'] != 200:
                 app.logger.error(u"Couldn't destroy ES index")
+            else:
+                app.logger.info(u"Index: '{idx}' DESTROYED.".format(idx=name))
             return result
         return dict(error=u'Index not found')
