@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-'''
+"""
 Copyright (C) <2012> <Olav Groenaas Gjerde>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -25,7 +25,7 @@ Created on Dec 8, 2012
 @Author: Olav Groenaas Gjerde
 
 DO NOT USE THIS!!!!
-'''
+"""
 
 import os
 import logging
@@ -41,79 +41,89 @@ from conf.base import Base
 from conf.boostrap import Bootstrap
 from services.user_data_service import UserDataService
 
-CONFIG_TYPE='ProductionConfig'
+CONFIG_TYPE = 'ProductionConfig'
 APP = Flask(__name__)
-APP.config.from_object('conf.config.%s'%(CONFIG_TYPE))
+APP.config.from_object('conf.config.%s' % CONFIG_TYPE)
 APP.secret_key = getRandomInteger(128)
 APP.permanent_session_lifetime = timedelta(seconds=10)
 #Imports all controllers and register pages
 CONTROLLERS = []
-for controller in os.listdir(os.getcwd()+"/controllers"):
+for controller in os.listdir(os.getcwd() + "/controllers"):
     module_name, ext = os.path.splitext(controller)
     if module_name.endswith('_controller') and ext == '.py':
-        module = __import__("controllers.%s"%(module_name))
+        module = __import__("controllers.%s" % module_name)
         CONTROLLERS.append(module.__getattribute__(module_name))
 for controller in CONTROLLERS:
     APP.register_blueprint(controller.PAGE)
-    
+
 logging.basicConfig(
     filename=APP.config["LOGFILE"],
     level=logging.INFO,
     format='%(asctime)s %(levelname)s: %(message)s '
-            '[in %(pathname)s:%(lineno)d]'
+           '[in %(pathname)s:%(lineno)d]'
 )
 sched = Scheduler()
+
+
 @sched.interval_schedule(seconds=APP.config['SYNC_INTERVAL'])
 def index_all_users_job():
     with APP.app_context():
         UserDataService.sync_all_users()
+
+
 sched.start()
-    
+
+
 @APP.errorhandler(400)
 def bad_request(exception):
-    '''Bad Request'''
+    """Bad Request"""
     data = dict(
-        status = exception.code, 
-        error = str(exception),
-        description = bad_request.__doc__
+        status=exception.code,
+        error=str(exception),
+        description=bad_request.__doc__
     )
     return jsonify(data), 400
 
+
 @APP.errorhandler(404)
 def page_not_found(exception):
-    '''Page Not Found'''
+    """Page Not Found"""
     data = dict(
-        status = exception.code, 
-        error = str(exception),
-        description = page_not_found.__doc__
+        status=exception.code,
+        error=str(exception),
+        description=page_not_found.__doc__
     )
     return jsonify(data), 404
 
-if APP.config['DEBUG'] == True:
+
+if APP.config['DEBUG'] is True:
     @APP.errorhandler(500)
     def error(exception):
-        '''Internal Server Error'''
+        """Internal Server Error"""
         data = dict(
-            status = exception.code, 
-            error = str(exception),
-            description = error.__doc__
+            status=exception.code,
+            error=str(exception),
+            description=error.__doc__
         )
         return jsonify(data), 500
 
+
 @APP.errorhandler(403)
 def forbidden(exception):
-    '''Forbidden'''
+    """Forbidden"""
     data = dict(
-        status = exception.code, 
-        error = str(exception),
-        description = forbidden.__doc__
+        status=exception.code,
+        error=str(exception),
+        description=forbidden.__doc__
     )
     return jsonify(data), 403
+
 
 @APP.before_first_request
 def bootstrap():
     Bootstrap()
+
+
 with APP.app_context():
     Base.do_first_request()
 APP.wsgi_app = ProxyFix(APP.wsgi_app)
-
