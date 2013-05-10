@@ -35,12 +35,16 @@ PAGE = Blueprint('storage_page', __name__)
 
 USER_ERROR_MSG = u"User {u} home folder doesn't exist."
 
-@PAGE.route("/zfs/create/anonymous/<string:uid>/<int:size>", methods=['GET', 'POST'])
+
+@PAGE.route("/zfs/create/anonymous/<string:uid>/<int:size>",
+            methods=['GET', 'POST'])
 @with_http_auth
 @disallow_special_characters
 def create_anonymous(uid, size):
     """
     Create ZFS Filesystem for user
+    :param uid:
+    :param size:
     """
     zfs_service = ZFSService(uid)
     data = zfs_service.create(size)
@@ -48,18 +52,22 @@ def create_anonymous(uid, size):
         abort(500, data['error'])
     return jsonify(data)
 
+
 @PAGE.route("/zfs/create/<string:uid>/<int:size>", methods=['GET', 'POST'])
 @with_http_auth
 @disallow_special_characters
 def create(uid, size):
     """
     Create ZFS Filesystem for user
+    :param uid:
+    :param size:
     """
     zfs_service = ZFSService(uid)
     data = zfs_service.create(size)
     if data is not True:
         abort(500, data['error'])
     return jsonify(data)
+
 
 def destroy(uid):
     user = User.get(uid)
